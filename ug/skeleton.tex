@@ -159,10 +159,16 @@ You may use any consistent reference style that you prefer, including ``[1]'' nu
 
 \chapter{Background}
 
-Effect handler-oriented programming is a programming paradigm that allows for the creation of composable code. Effects are 
+Effect handler-oriented programming is a programming paradigm that helps with the creation of composable code. Effects are able to extend exception handling by enabling continuation of a program halted by the detection of an exception. It is also possible to pass values to the program after the continuation. Keeping this in mind, you can implement multiple side effects with this paradigm. [Examples]
+
+An effect is defined by its effect signature, which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
+
+Handlers are implementations for a particular effect. Let us say you have an effect called 'Crop'. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations.
+
+These handlers are also extremely composable because of 
 
 
-Effects handlers represent a programming paradigm that is uniquely composable. an extension of the common programming tool of catching exceptions. When an exception is caught by the program, the control flow is terminated  interrupts control flow to 
+
 
 \chapter{Conclusions}
 

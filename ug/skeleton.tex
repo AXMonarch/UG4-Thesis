@@ -201,9 +201,72 @@ I have elected to use OCaml to represent these examples, and to write the disser
 
 \subsection{Basic Components of an Effect Oriented Program}
 
+
+\subsubsection{{Handling the \texttt{Choose} Effect}}
+
+The \texttt{Choose} effect represents an operation where the program must select one value from a list of items. The actual choice depends on the effect handler, which determines the behavior of this effect.
 \begin{lstlisting}[language=OCaml]
 effect Choose : int list -> int
 \end{lstlisting}
+
+\subsubsection{Random Choice Handler}
+
+In this version, whenever the \texttt{Choose} effect is performed, the handler selects an element uniformly at random from the provided list.
+
+\begin{lstlisting}[language=OCaml]
+open Random
+open Effect
+
+effect Choose : int list -> int
+
+let handle_random f =
+  Random.self_init ();
+  try
+    f ()
+  with
+  | effect (Choose lst) k ->
+      let n = List.length lst in
+      let idx = Random.int n in
+      continue k (List.nth lst idx)
+\end{lstlisting}
+
+This handler initializes the random number generator, captures the continuation \texttt{k}, and resumes execution with a randomly chosen element from the list.
+
+\subsubsection{Deterministic Choice Handler}
+
+Alternatively, we can define a deterministic handler that always selects the element at a specific index. This is useful for reproducibility or debugging.
+
+\begin{lstlisting}[language=OCaml]
+let handle_indexed index f =
+  try
+    f ()
+  with
+  | effect (Choose lst) k ->
+      let choice =
+        if index < List.length lst then List.nth lst index
+        else failwith "Index out of range"
+      in
+      continue k choice
+\end{lstlisting}
+
+Here, the handler selects the element at position \texttt{index} from the provided list. If the index is out of range, an exception is raised. This handler demonstrates how algebraic effects allow deterministic and nondeterministic interpretations to coexist under the same interface.
+
+\subsubsection{Demonstration Program}
+
+We can now define a simple program that performs the \texttt{Choose} effect and observe how different handlers influence its behavior.
+
+\begin{lstlisting}[language=OCaml]
+let choose_demo () =
+  let x = perform (Choose [1; 2; 3]) in
+  let y = perform (Choose [10; 20; 30]) in
+  x + y
+
+let () =
+  Printf.printf "Random result: %d\n" (handle_random choose_demo);
+  Printf.printf "Indexed result: %d\n" (handle_indexed 0 choose_demo);
+\end{lstlisting}
+
+When run, the program produces different outcomes depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a predictable, reproducible result.
 
 \chapter{Conclusions}
 

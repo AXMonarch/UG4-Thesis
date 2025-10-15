@@ -16,6 +16,30 @@
 \usepackage{microtype} % recommended, but you can remove if it causes problems
 \usepackage[round]{natbib} % recommended for citations
 
+% --- Colors & code formatting ---
+\usepackage{xcolor}
+\usepackage{listings}
+
+% Define colors safely
+\definecolor{codebg}{rgb}{0.97,0.97,0.97}
+\definecolor{ocamlblue}{rgb}{0.2,0.2,0.6}
+\definecolor{gray}{rgb}{0.4,0.4,0.4}
+\definecolor{orange}{rgb}{1.0,0.55,0.0}
+
+% Define OCaml syntax highlighting
+\lstdefinelanguage{OCaml}{
+  keywords={let, rec, match, with, type, module, open, effect, perform, continue, and, in, fun, function},
+  keywordstyle=\color{ocamlblue}\bfseries,
+  comment=[s]{(*}{*)},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{orange},
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  breaklines=true,
+  showstringspaces=false
+}
+
 \begin{document}
 \begin{preliminary}
 
@@ -159,16 +183,27 @@ You may use any consistent reference style that you prefer, including ``[1]'' nu
 
 \chapter{Background}
 
+\section{Effects and Handlers}
+
 Effect handler-oriented programming is a programming paradigm that helps with the creation of composable code. Effects are able to extend exception handling by enabling continuation of a program halted by the detection of an exception. It is also possible to pass values to the program after the continuation. Keeping this in mind, you can implement multiple side effects with this paradigm. [Examples]
 
 An effect is defined by its effect signature, which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
 
 Handlers are implementations for a particular effect. Let us say you have an effect called 'Crop'. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations.
 
-These handlers are also extremely composable because of 
+These handlers are also extremely composable because of continuations. You can pass a value to a continuation that can invoke another handler, and so on. This creates a modular and composable style of code built on Algebraic Effect Handlers. 
 
+\section{Examples in Code}
 
+This section will highlight some practical examples of effect handlers in code. 
 
+I have elected to use OCaml to represent these examples, and to write the dissertation. OCaml has a rich effects system and is a functional language with strong pattern matching and type inference capabilities. Its support for algebraic effects and handlers provides a natural foundation for expressing probabilistic computations as composable and interpretable effects. This allows the separation of model specification from the underlying inference mechanism, enabling modular experimentation with different inference strategies. 
+
+\subsection{Basic Components of an Effect Oriented Program}
+
+\begin{lstlisting}[language=OCaml]
+effect Choose : int list -> int
+\end{lstlisting}
 
 \chapter{Conclusions}
 

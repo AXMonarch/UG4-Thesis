@@ -205,32 +205,34 @@ I have elected to use OCaml to represent these examples, and to write the disser
 \subsubsection{{Handling the \texttt{Choose} Effect}}
 
 The \texttt{Choose} effect represents an operation where the program must select one value from a list of items. The actual choice depends on the effect handler, which determines the behavior of this effect.
-\begin{lstlisting}[language=OCaml]
-effect Choose : int list -> int
-\end{lstlisting}
 
 \subsubsection{Random Choice Handler}
 
-In this version, whenever the \texttt{Choose} effect is performed, the handler selects an element uniformly at random from the provided list.
+This handler initializes the random number generator, captures the continuation \texttt{k}, and resumes execution with a randomly chosen element from the list.
+
 
 \begin{lstlisting}[language=OCaml]
-open Random
 open Effect
+open Effect.Deep
+open Random
 
-effect Choose : int list -> int
+type _ Effect.t += Choose : int list -> int Effect.t
 
 let handle_random f =
   Random.self_init ();
-  try
-    f ()
-  with
-  | effect (Choose lst) k ->
-      let n = List.length lst in
-      let idx = Random.int n in
-      continue k (List.nth lst idx)
+  match_with f ()
+  { retc = (fun v -> v);
+    exnc = (fun e -> raise e);
+    effc = (fun (type a) (eff : a t) ->
+      match eff with
+      | Choose lst ->
+          Some (fun (k : (a, _) continuation) ->
+            let idx = Random.int (List.length lst) in
+            let choice = List.nth lst idx in
+            continue k choice)
+      | _ -> None)
+  }
 \end{lstlisting}
-
-This handler initializes the random number generator, captures the continuation \texttt{k}, and resumes execution with a randomly chosen element from the list.
 
 \subsubsection{Deterministic Choice Handler}
 
@@ -238,22 +240,23 @@ Alternatively, we can define a deterministic handler that always selects the ele
 
 \begin{lstlisting}[language=OCaml]
 let handle_indexed index f =
-  try
-    f ()
-  with
-  | effect (Choose lst) k ->
-      let choice =
-        if index < List.length lst then List.nth lst index
-        else failwith "Index out of range"
-      in
-      continue k choice
+  match_with f ()
+  { retc = (fun v -> v);
+    exnc = (fun e -> raise e);
+    effc = (fun (type a) (eff : a t) ->
+      match eff with
+      | Choose lst ->
+          Some (fun (k : (a, _) continuation) ->
+            if index < List.length lst then
+              continue k (List.nth lst index)
+            else failwith "Index out of range")
+      | _ -> None)
+  }
 \end{lstlisting}
-
-Here, the handler selects the element at position \texttt{index} from the list. If the index is out of range, an exception is raised. This handler demonstrates how this programming paradigm allows multiple interpretations to co-exist under the same effect.
 
 \subsubsection{Demonstration Program}
 
-We can now define a simple program that performs the \texttt{Choose} effect and observe how different handlers influence its behavior.
+We can now define a small program that performs the \texttt{Choose} effect twice and evaluates it under both handlers.
 
 \begin{lstlisting}[language=OCaml]
 let choose_demo () =
@@ -266,7 +269,15 @@ let () =
   Printf.printf "Indexed result: %d\n" (handle_indexed 0 choose_demo);
 \end{lstlisting}
 
-When run, the program produces different outcomes depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a single, fixed result each time.
+When run, the program produces different results depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a single fixed result each time.
+
+\subsection{Prior Work}
+
+
+
+\subsection{Probability}
+
+
 
 \chapter{Conclusions}
 

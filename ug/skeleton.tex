@@ -189,7 +189,7 @@ Effect handler-oriented programming is a programming paradigm that helps with th
 
 An effect is defined by its effect signature, which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
 
-Handlers are implementations for a particular effect. Let us say you have an effect called 'Crop'. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations.
+Handlers are implementations for a particular effect. Let us say you have an effect called \texttt{Crop}. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations.
 
 These handlers are also extremely composable because of continuations. You can pass a value to a continuation that can invoke another handler, and so on. This creates a modular and composable style of code built on Algebraic Effect Handlers. 
 
@@ -249,7 +249,7 @@ let handle_indexed index f =
       continue k choice
 \end{lstlisting}
 
-Here, the handler selects the element at position \texttt{index} from the provided list. If the index is out of range, an exception is raised. This handler demonstrates how algebraic effects allow deterministic and nondeterministic interpretations to coexist under the same interface.
+Here, the handler selects the element at position \texttt{index} from the list. If the index is out of range, an exception is raised. This handler demonstrates how this programming paradigm allows multiple interpretations to co-exist under the same effect.
 
 \subsubsection{Demonstration Program}
 
@@ -266,7 +266,7 @@ let () =
   Printf.printf "Indexed result: %d\n" (handle_indexed 0 choose_demo);
 \end{lstlisting}
 
-When run, the program produces different outcomes depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a predictable, reproducible result.
+When run, the program produces different outcomes depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a single, fixed result each time.
 
 \chapter{Conclusions}
 

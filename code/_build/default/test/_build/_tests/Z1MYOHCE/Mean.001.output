@@ -1,0 +1,10 @@
+[33mASSERT[0m Mean
+[31mFAIL[0m Mean
+
+   Expected: `[32m3[0m'
+   Received: `[31m3.1[0m'
+
+Raised at Alcotest_engine__Test.check in file "src/alcotest-engine/test.ml", lines 216-226, characters 4-19
+Called from Alcotest_engine__Core.Make.protect_test.(fun) in file "src/alcotest-engine/core.ml", line 186, characters 17-23
+Called from Alcotest_engine__Monad.Identity.catch in file "src/alcotest-engine/monad.ml", line 24, characters 31-35
+

@@ -1,4 +1,267 @@
 (lang dune 3.20)
 (name code)
-(sections (lib .) (bin ../../bin))
-(files (lib (META dune-package opam)) (bin (code)))
+(sections (lib .) (libexec .) (bin ../../bin))
+(files
+ (lib
+  (META
+   code.a
+   code.cma
+   code.cmi
+   code.cmt
+   code.cmx
+   code.cmxa
+   code.ml
+   dune-package
+   effects/effects.a
+   effects/effects.cma
+   effects/effects.cmi
+   effects/effects.cmt
+   effects/effects.cmx
+   effects/effects.cmxa
+   effects/effects.ml
+   mh/independence_mh.ml
+   mh/mh.a
+   mh/mh.cma
+   mh/mh.cmi
+   mh/mh.cmt
+   mh/mh.cmx
+   mh/mh.cmxa
+   mh/mh.ml
+   mh/mh__Independence_mh.cmi
+   mh/mh__Independence_mh.cmt
+   mh/mh__Independence_mh.cmx
+   mh/mh__Mh_base.cmi
+   mh/mh__Mh_base.cmt
+   mh/mh__Mh_base.cmx
+   mh/mh__Particle_mh.cmi
+   mh/mh__Particle_mh.cmt
+   mh/mh__Particle_mh.cmx
+   mh/mh__Single_site_mh.cmi
+   mh/mh__Single_site_mh.cmt
+   mh/mh__Single_site_mh.cmx
+   mh/mh_base.ml
+   mh/particle_mh.ml
+   mh/single_site_mh.ml
+   models/hmm.ml
+   models/linear_regression.ml
+   models/models.a
+   models/models.cma
+   models/models.cmi
+   models/models.cmt
+   models/models.cmx
+   models/models.cmxa
+   models/models.ml
+   models/models__Hmm.cmi
+   models/models__Hmm.cmt
+   models/models__Hmm.cmx
+   models/models__Linear_regression.cmi
+   models/models__Linear_regression.cmt
+   models/models__Linear_regression.cmx
+   models/models__Types.cmi
+   models/models__Types.cmt
+   models/models__Types.cmx
+   models/types.ml
+   opam
+   pf/multinomial_pf.ml
+   pf/pf.a
+   pf/pf.cma
+   pf/pf.cmi
+   pf/pf.cmt
+   pf/pf.cmx
+   pf/pf.cmxa
+   pf/pf.ml
+   pf/pf__Multinomial_pf.cmi
+   pf/pf__Multinomial_pf.cmt
+   pf/pf__Multinomial_pf.cmx
+   pf/pf__Pf_base.cmi
+   pf/pf__Pf_base.cmt
+   pf/pf__Pf_base.cmx
+   pf/pf__Resample_move_pf.cmi
+   pf/pf__Resample_move_pf.cmt
+   pf/pf__Resample_move_pf.cmx
+   pf/pf__Systematic_pf.cmi
+   pf/pf__Systematic_pf.cmt
+   pf/pf__Systematic_pf.cmx
+   pf/pf_base.ml
+   pf/resample_move_pf.ml
+   pf/systematic_pf.ml
+   utils/stats.ml
+   utils/utils.a
+   utils/utils.cma
+   utils/utils.cmi
+   utils/utils.cmt
+   utils/utils.cmx
+   utils/utils.cmxa
+   utils/utils.ml
+   utils/utils__Stats.cmi
+   utils/utils__Stats.cmt
+   utils/utils__Stats.cmx))
+ (libexec
+  (code.cmxs
+   effects/effects.cmxs
+   mh/mh.cmxs
+   models/models.cmxs
+   pf/pf.cmxs
+   utils/utils.cmxs))
+ (bin (code)))
+(library
+ (name code)
+ (kind normal)
+ (archives (byte code.cma) (native code.cmxa))
+ (plugins (byte code.cma) (native code.cmxs))
+ (native_archives code.a)
+ (requires code.effects code.utils code.models code.mh code.pf)
+ (main_module_name Code)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name code)
+     (visibility public)
+     (kind alias)
+     (source (path Code) (impl (path code.ml-gen))))
+    (name Code))
+   (wrapped true))))
+(library
+ (name code.effects)
+ (kind normal)
+ (archives (byte effects/effects.cma) (native effects/effects.cmxa))
+ (plugins (byte effects/effects.cma) (native effects/effects.cmxs))
+ (native_archives effects/effects.a)
+ (main_module_name Effects)
+ (modes byte native)
+ (modules
+  (singleton
+   (obj_name effects)
+   (visibility public)
+   (source (path Effects) (impl (path effects/effects.ml))))))
+(library
+ (name code.mh)
+ (kind normal)
+ (archives (byte mh/mh.cma) (native mh/mh.cmxa))
+ (plugins (byte mh/mh.cma) (native mh/mh.cmxs))
+ (native_archives mh/mh.a)
+ (requires code.effects code.utils)
+ (main_module_name Mh)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name mh)
+     (visibility public)
+     (kind alias)
+     (source (path Mh) (impl (path mh/mh.ml-gen))))
+    (name Mh)
+    (modules
+     (module
+      (obj_name mh__Independence_mh)
+      (visibility public)
+      (source (path Independence_mh) (impl (path mh/independence_mh.ml))))
+     (module
+      (obj_name mh__Mh_base)
+      (visibility public)
+      (source (path Mh_base) (impl (path mh/mh_base.ml))))
+     (module
+      (obj_name mh__Particle_mh)
+      (visibility public)
+      (source (path Particle_mh) (impl (path mh/particle_mh.ml))))
+     (module
+      (obj_name mh__Single_site_mh)
+      (visibility public)
+      (source (path Single_site_mh) (impl (path mh/single_site_mh.ml))))))
+   (wrapped true))))
+(library
+ (name code.models)
+ (kind normal)
+ (archives (byte models/models.cma) (native models/models.cmxa))
+ (plugins (byte models/models.cma) (native models/models.cmxs))
+ (native_archives models/models.a)
+ (requires code.effects)
+ (main_module_name Models)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name models)
+     (visibility public)
+     (kind alias)
+     (source (path Models) (impl (path models/models.ml-gen))))
+    (name Models)
+    (modules
+     (module
+      (obj_name models__Hmm)
+      (visibility public)
+      (source (path Hmm) (impl (path models/hmm.ml))))
+     (module
+      (obj_name models__Linear_regression)
+      (visibility public)
+      (source
+       (path Linear_regression)
+       (impl (path models/linear_regression.ml))))
+     (module
+      (obj_name models__Types)
+      (visibility public)
+      (source (path Types) (impl (path models/types.ml))))))
+   (wrapped true))))
+(library
+ (name code.pf)
+ (kind normal)
+ (archives (byte pf/pf.cma) (native pf/pf.cmxa))
+ (plugins (byte pf/pf.cma) (native pf/pf.cmxs))
+ (native_archives pf/pf.a)
+ (requires code.effects code.utils)
+ (main_module_name Pf)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name pf)
+     (visibility public)
+     (kind alias)
+     (source (path Pf) (impl (path pf/pf.ml-gen))))
+    (name Pf)
+    (modules
+     (module
+      (obj_name pf__Multinomial_pf)
+      (visibility public)
+      (source (path Multinomial_pf) (impl (path pf/multinomial_pf.ml))))
+     (module
+      (obj_name pf__Pf_base)
+      (visibility public)
+      (source (path Pf_base) (impl (path pf/pf_base.ml))))
+     (module
+      (obj_name pf__Resample_move_pf)
+      (visibility public)
+      (source (path Resample_move_pf) (impl (path pf/resample_move_pf.ml))))
+     (module
+      (obj_name pf__Systematic_pf)
+      (visibility public)
+      (source (path Systematic_pf) (impl (path pf/systematic_pf.ml))))))
+   (wrapped true))))
+(library
+ (name code.utils)
+ (kind normal)
+ (archives (byte utils/utils.cma) (native utils/utils.cmxa))
+ (plugins (byte utils/utils.cma) (native utils/utils.cmxs))
+ (native_archives utils/utils.a)
+ (main_module_name Utils)
+ (modes byte native)
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name utils)
+     (visibility public)
+     (kind alias)
+     (source (path Utils) (impl (path utils/utils.ml-gen))))
+    (name Utils)
+    (modules
+     (module
+      (obj_name utils__Stats)
+      (visibility public)
+      (source (path Stats) (impl (path utils/stats.ml))))))
+   (wrapped true))))

@@ -1,7 +1,105 @@
 lib: [
   "_build/install/default/lib/code/META"
+  "_build/install/default/lib/code/code.a"
+  "_build/install/default/lib/code/code.cma"
+  "_build/install/default/lib/code/code.cmi"
+  "_build/install/default/lib/code/code.cmt"
+  "_build/install/default/lib/code/code.cmx"
+  "_build/install/default/lib/code/code.cmxa"
+  "_build/install/default/lib/code/code.ml"
   "_build/install/default/lib/code/dune-package"
+  "_build/install/default/lib/code/effects/effects.a" {"effects/effects.a"}
+  "_build/install/default/lib/code/effects/effects.cma" {"effects/effects.cma"}
+  "_build/install/default/lib/code/effects/effects.cmi" {"effects/effects.cmi"}
+  "_build/install/default/lib/code/effects/effects.cmt" {"effects/effects.cmt"}
+  "_build/install/default/lib/code/effects/effects.cmx" {"effects/effects.cmx"}
+  "_build/install/default/lib/code/effects/effects.cmxa" {"effects/effects.cmxa"}
+  "_build/install/default/lib/code/effects/effects.ml" {"effects/effects.ml"}
+  "_build/install/default/lib/code/mh/independence_mh.ml" {"mh/independence_mh.ml"}
+  "_build/install/default/lib/code/mh/mh.a" {"mh/mh.a"}
+  "_build/install/default/lib/code/mh/mh.cma" {"mh/mh.cma"}
+  "_build/install/default/lib/code/mh/mh.cmi" {"mh/mh.cmi"}
+  "_build/install/default/lib/code/mh/mh.cmt" {"mh/mh.cmt"}
+  "_build/install/default/lib/code/mh/mh.cmx" {"mh/mh.cmx"}
+  "_build/install/default/lib/code/mh/mh.cmxa" {"mh/mh.cmxa"}
+  "_build/install/default/lib/code/mh/mh.ml" {"mh/mh.ml"}
+  "_build/install/default/lib/code/mh/mh__Independence_mh.cmi" {"mh/mh__Independence_mh.cmi"}
+  "_build/install/default/lib/code/mh/mh__Independence_mh.cmt" {"mh/mh__Independence_mh.cmt"}
+  "_build/install/default/lib/code/mh/mh__Independence_mh.cmx" {"mh/mh__Independence_mh.cmx"}
+  "_build/install/default/lib/code/mh/mh__Mh_base.cmi" {"mh/mh__Mh_base.cmi"}
+  "_build/install/default/lib/code/mh/mh__Mh_base.cmt" {"mh/mh__Mh_base.cmt"}
+  "_build/install/default/lib/code/mh/mh__Mh_base.cmx" {"mh/mh__Mh_base.cmx"}
+  "_build/install/default/lib/code/mh/mh__Particle_mh.cmi" {"mh/mh__Particle_mh.cmi"}
+  "_build/install/default/lib/code/mh/mh__Particle_mh.cmt" {"mh/mh__Particle_mh.cmt"}
+  "_build/install/default/lib/code/mh/mh__Particle_mh.cmx" {"mh/mh__Particle_mh.cmx"}
+  "_build/install/default/lib/code/mh/mh__Single_site_mh.cmi" {"mh/mh__Single_site_mh.cmi"}
+  "_build/install/default/lib/code/mh/mh__Single_site_mh.cmt" {"mh/mh__Single_site_mh.cmt"}
+  "_build/install/default/lib/code/mh/mh__Single_site_mh.cmx" {"mh/mh__Single_site_mh.cmx"}
+  "_build/install/default/lib/code/mh/mh_base.ml" {"mh/mh_base.ml"}
+  "_build/install/default/lib/code/mh/particle_mh.ml" {"mh/particle_mh.ml"}
+  "_build/install/default/lib/code/mh/single_site_mh.ml" {"mh/single_site_mh.ml"}
+  "_build/install/default/lib/code/models/hmm.ml" {"models/hmm.ml"}
+  "_build/install/default/lib/code/models/linear_regression.ml" {"models/linear_regression.ml"}
+  "_build/install/default/lib/code/models/models.a" {"models/models.a"}
+  "_build/install/default/lib/code/models/models.cma" {"models/models.cma"}
+  "_build/install/default/lib/code/models/models.cmi" {"models/models.cmi"}
+  "_build/install/default/lib/code/models/models.cmt" {"models/models.cmt"}
+  "_build/install/default/lib/code/models/models.cmx" {"models/models.cmx"}
+  "_build/install/default/lib/code/models/models.cmxa" {"models/models.cmxa"}
+  "_build/install/default/lib/code/models/models.ml" {"models/models.ml"}
+  "_build/install/default/lib/code/models/models__Hmm.cmi" {"models/models__Hmm.cmi"}
+  "_build/install/default/lib/code/models/models__Hmm.cmt" {"models/models__Hmm.cmt"}
+  "_build/install/default/lib/code/models/models__Hmm.cmx" {"models/models__Hmm.cmx"}
+  "_build/install/default/lib/code/models/models__Linear_regression.cmi" {"models/models__Linear_regression.cmi"}
+  "_build/install/default/lib/code/models/models__Linear_regression.cmt" {"models/models__Linear_regression.cmt"}
+  "_build/install/default/lib/code/models/models__Linear_regression.cmx" {"models/models__Linear_regression.cmx"}
+  "_build/install/default/lib/code/models/models__Types.cmi" {"models/models__Types.cmi"}
+  "_build/install/default/lib/code/models/models__Types.cmt" {"models/models__Types.cmt"}
+  "_build/install/default/lib/code/models/models__Types.cmx" {"models/models__Types.cmx"}
+  "_build/install/default/lib/code/models/types.ml" {"models/types.ml"}
   "_build/install/default/lib/code/opam"
+  "_build/install/default/lib/code/pf/multinomial_pf.ml" {"pf/multinomial_pf.ml"}
+  "_build/install/default/lib/code/pf/pf.a" {"pf/pf.a"}
+  "_build/install/default/lib/code/pf/pf.cma" {"pf/pf.cma"}
+  "_build/install/default/lib/code/pf/pf.cmi" {"pf/pf.cmi"}
+  "_build/install/default/lib/code/pf/pf.cmt" {"pf/pf.cmt"}
+  "_build/install/default/lib/code/pf/pf.cmx" {"pf/pf.cmx"}
+  "_build/install/default/lib/code/pf/pf.cmxa" {"pf/pf.cmxa"}
+  "_build/install/default/lib/code/pf/pf.ml" {"pf/pf.ml"}
+  "_build/install/default/lib/code/pf/pf__Multinomial_pf.cmi" {"pf/pf__Multinomial_pf.cmi"}
+  "_build/install/default/lib/code/pf/pf__Multinomial_pf.cmt" {"pf/pf__Multinomial_pf.cmt"}
+  "_build/install/default/lib/code/pf/pf__Multinomial_pf.cmx" {"pf/pf__Multinomial_pf.cmx"}
+  "_build/install/default/lib/code/pf/pf__Pf_base.cmi" {"pf/pf__Pf_base.cmi"}
+  "_build/install/default/lib/code/pf/pf__Pf_base.cmt" {"pf/pf__Pf_base.cmt"}
+  "_build/install/default/lib/code/pf/pf__Pf_base.cmx" {"pf/pf__Pf_base.cmx"}
+  "_build/install/default/lib/code/pf/pf__Resample_move_pf.cmi" {"pf/pf__Resample_move_pf.cmi"}
+  "_build/install/default/lib/code/pf/pf__Resample_move_pf.cmt" {"pf/pf__Resample_move_pf.cmt"}
+  "_build/install/default/lib/code/pf/pf__Resample_move_pf.cmx" {"pf/pf__Resample_move_pf.cmx"}
+  "_build/install/default/lib/code/pf/pf__Systematic_pf.cmi" {"pf/pf__Systematic_pf.cmi"}
+  "_build/install/default/lib/code/pf/pf__Systematic_pf.cmt" {"pf/pf__Systematic_pf.cmt"}
+  "_build/install/default/lib/code/pf/pf__Systematic_pf.cmx" {"pf/pf__Systematic_pf.cmx"}
+  "_build/install/default/lib/code/pf/pf_base.ml" {"pf/pf_base.ml"}
+  "_build/install/default/lib/code/pf/resample_move_pf.ml" {"pf/resample_move_pf.ml"}
+  "_build/install/default/lib/code/pf/systematic_pf.ml" {"pf/systematic_pf.ml"}
+  "_build/install/default/lib/code/utils/stats.ml" {"utils/stats.ml"}
+  "_build/install/default/lib/code/utils/utils.a" {"utils/utils.a"}
+  "_build/install/default/lib/code/utils/utils.cma" {"utils/utils.cma"}
+  "_build/install/default/lib/code/utils/utils.cmi" {"utils/utils.cmi"}
+  "_build/install/default/lib/code/utils/utils.cmt" {"utils/utils.cmt"}
+  "_build/install/default/lib/code/utils/utils.cmx" {"utils/utils.cmx"}
+  "_build/install/default/lib/code/utils/utils.cmxa" {"utils/utils.cmxa"}
+  "_build/install/default/lib/code/utils/utils.ml" {"utils/utils.ml"}
+  "_build/install/default/lib/code/utils/utils__Stats.cmi" {"utils/utils__Stats.cmi"}
+  "_build/install/default/lib/code/utils/utils__Stats.cmt" {"utils/utils__Stats.cmt"}
+  "_build/install/default/lib/code/utils/utils__Stats.cmx" {"utils/utils__Stats.cmx"}
+]
+libexec: [
+  "_build/install/default/lib/code/code.cmxs"
+  "_build/install/default/lib/code/effects/effects.cmxs" {"effects/effects.cmxs"}
+  "_build/install/default/lib/code/mh/mh.cmxs" {"mh/mh.cmxs"}
+  "_build/install/default/lib/code/models/models.cmxs" {"models/models.cmxs"}
+  "_build/install/default/lib/code/pf/pf.cmxs" {"pf/pf.cmxs"}
+  "_build/install/default/lib/code/utils/utils.cmxs" {"utils/utils.cmxs"}
 ]
 bin: [
   "_build/install/default/bin/code"

@@ -1,2 +1,5 @@
 (library
- (name code))
+ (name code)
+ (public_name code)
+ (libraries effects utils models mh pf)
+ (modules))

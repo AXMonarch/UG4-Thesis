@@ -1,5 +1,3 @@
-(* stats.ml *)
-
 let mean xs =
   let sum = List.fold_left ( +. ) 0.0 xs in
   let n = float_of_int (List.length xs) in
@@ -11,7 +9,7 @@ let variance xs =
   else
     let m = mean xs in
     let sum_sq = List.fold_left (fun acc x -> acc +. (x -. m) ** 2.) 0.0 xs in
-    sum_sq /. n  (* population variance *)
+    sum_sq /. n
 
 let std_dev xs =
   sqrt (variance xs)

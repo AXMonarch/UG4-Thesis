@@ -1,5 +1,3 @@
-(* test_utils.ml *)
-
 open Utils.Stats
 open Alcotest
 

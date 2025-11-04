@@ -2,7 +2,7 @@ open Alcotest
 open Models
 open Effect.Deep
 
-let rec handle f =
+let handle f =
   match f () with
   | effect (Effects.Sample s), k ->
       let value =
@@ -10,9 +10,9 @@ let rec handle f =
         | Effects.Uniform (low, high) -> (low +. high) /. 2.0
         | Effects.Normal (mu, _) -> mu
       in
-      handle (fun () -> continue k value)
+      continue k value
   | effect (Effects.Observe _), k ->
-      handle (fun () -> continue k ())
+      continue k ()
   | x -> x
 
 let test_linear_regression () =

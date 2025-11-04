@@ -1,0 +1,48 @@
+# OCaml build artifacts
+_build/
+*.cmi
+*.cmo
+*.cmx
+*.cma
+*.cmxa
+*.cmxs
+*.a
+*.o
+*.so
+*.dylib
+*.annot
+*.cmt
+*.cmti
+*.ml-gen
+
+# Dune
+.merlin
+dune-project.opam
+
+# OCaml installation artifacts
+*.install
+*.opam.locked
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build and install directories
+install/
+default/
+
+# Test artifacts
+test/_build/
+_tests/
+
+# Dependencies
+.opam/
+_opam/
+
+# Logs
+*.log
+log

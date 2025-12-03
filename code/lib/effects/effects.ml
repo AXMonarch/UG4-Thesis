@@ -5,7 +5,7 @@ type distribution =
 (** Trace type for inference operations *)
 type trace = {
   choices : (string, float) Hashtbl.t;
-  log_prob : float;
+  mutable log_prob : float;
 }
 
 (** State type for inference (result, weight, trace) *)
@@ -19,7 +19,7 @@ type _ Effect.t +=
 (** Inference operation effects *)
 type _ Effect.t +=
   | Propose : trace -> trace Effect.t
-  | Accept : 'a state -> 'a state -> 'a state Effect.t
+  | Accept : ('a state * 'a state) -> 'a state Effect.t
   | Resample : float array -> int Effect.t
 
 (* Propose takes a trace and returns a new trace if the proposal is accepted *)

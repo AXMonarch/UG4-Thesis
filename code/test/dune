@@ -1,5 +1,5 @@
 (test
  (name test_code)
- (libraries code.models code.effects code.utils alcotest)
- (modules test_code test_models test_utils))
+ (libraries code.models code.effects code.utils code.mh code.pf alcotest)
+ (modules test_code test_models test_utils test_inference))
 

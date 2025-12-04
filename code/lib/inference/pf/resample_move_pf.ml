@@ -4,6 +4,7 @@ open Effect
 open Effect.Deep
 open Effects
 open Pf_base
+open Models
 
 (* Note: We need access to MH types for the move step, but since mh module
    is a sibling library, we'll define our own proposal function type here *)
@@ -119,35 +120,44 @@ let run_resample_move_pf (type a)
   let resample_fn = make_resample_move (program 0) multinomial_resample_base num_moves propose_fn in
   run_pf program num_particles num_steps resample_fn resample_threshold
 
-(** Demo: Resample-move with rejuvenation *)
+(** Demo: HMM with resample-move rejuvenation *)
 let demo_resample_move_pf () =
-  print_endline "\n=== Resample-Move PF Demo ===";
+  print_endline "\n=== Resample-Move PF Demo: HMM ===";
   
-  let model () =
-    let state = perform (Sample { name = "state"; dist = Normal (3.0, 1.5) }) in
-    perform (Observe { name = "obs"; dist = Normal (state, 0.8); obs = 4.0 });
-    state
-  in
+  let observations = [| 1.0; 2.0; 2.5; 3.0 |] in
+  let num_states = 3 in
   
-  let propose_fn _name _dist current = Some (current +. (Random.float 0.4 -. 0.2)) in
-  let num_particles = 15 in
+  let hmm_model () = Hmm.hidden_markov_model num_states observations in
+  
+  let propose_fn _name _dist current = Some (max 0.0 (min (float_of_int num_states) (current +. (Random.float 0.6 -. 0.3)))) in
+  let num_particles = 25 in
   let particles = init_particles num_particles in
   
   (* Regular resampling *)
-  let (prop1, _) = propagate_particles model particles in
+  let (prop1, _) = propagate_particles hmm_model particles in
   let norm1 = normalize_weights prop1 in
   let resampled_only = multinomial_resample_base norm1 in
   
   (* Resample + move *)
-  let (prop2, _) = propagate_particles model particles in
+  let (prop2, _) = propagate_particles hmm_model particles in
   let norm2 = normalize_weights prop2 in
-  let resample_fn = make_resample_move model multinomial_resample_base 3 propose_fn in
+  let resample_fn = make_resample_move hmm_model multinomial_resample_base 2 propose_fn in
   let resampled_moved = resample_fn norm2 in
   
-  let est_only = estimate_state resampled_only "state" in
-  let est_moved = estimate_state resampled_moved "state" in
+  let state_est_only = List.init (Array.length observations) (fun t ->
+    estimate_state resampled_only ("state_" ^ string_of_int t)
+  ) in
+  let state_est_moved = List.init (Array.length observations) (fun t ->
+    estimate_state resampled_moved ("state_" ^ string_of_int t)
+  ) in
   
-  Printf.printf "Resample-Move PF: %d particles, 3 MCMC moves\n" num_particles;
-  Printf.printf "Estimate (resample only) = %.3f\n" est_only;
-  Printf.printf "Estimate (resample+move) = %.3f (observed 4.0)\n" est_moved;
+  Printf.printf "Resample-Move PF-HMM: %d particles, 2 MCMC moves\n" num_particles;
+  Printf.printf "Observations: [%.1f; %.1f; %.1f; %.1f]\n" 
+    observations.(0) observations.(1) observations.(2) observations.(3);
+  Printf.printf "Estimates (resample only): [";
+  List.iteri (fun i est -> if i > 0 then Printf.printf "; "; Printf.printf "%.1f" est) state_est_only;
+  Printf.printf "]\n";
+  Printf.printf "Estimates (resample+move): [";
+  List.iteri (fun i est -> if i > 0 then Printf.printf "; "; Printf.printf "%.1f" est) state_est_moved;
+  Printf.printf "]\n";
   print_endline "=== End Resample-Move PF Demo ===\n"

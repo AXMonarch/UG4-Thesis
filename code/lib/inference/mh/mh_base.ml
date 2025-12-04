@@ -3,6 +3,7 @@
 open Effect
 open Effect.Deep
 open Effects
+open Models
 
 let empty_trace () = {
   choices = Hashtbl.create 16; (*apparently hashtable sizes in OCaml *)
@@ -172,44 +173,49 @@ let mh_handler : 'a. (unit -> 'a) -> propose_fn -> 'a state =
     let initial_trace = empty_trace () in
     handle_step initial_trace 1.0 program
 
-(** Toy HMM demo: Simple 2-state HMM with one observation *)
+(** HMM demo using actual model from Models.Hmm *)
 let demo_toy_hmm () =
-  print_endline "\n=== Metropolis-Hastings Demo: Toy HMM ===";
+  print_endline "\n=== Metropolis-Hastings Demo: HMM ===";
   
-  (* Simple probabilistic model: sample a hidden state, observe data *)
-  let toy_hmm_model () =
-    let state = perform (Sample { name = "state"; dist = Uniform (0.0, 2.0) }) in
-    let obs_value = 1.5 in
-    perform (Observe { name = "obs"; dist = Normal (state, 0.5); obs = obs_value });
-    int_of_float state
-  in
+  (* Create observations for a 3-state HMM *)
+  let observations = [| 1.0; 2.0; 2.5; 3.0 |] in
+  let num_states = 3 in
   
-  (* Simple proposal: random walk with small step *)
+  (* HMM model *)
+  let hmm_model () = Hmm.hidden_markov_model num_states observations in
+  
+  (* Random walk proposal *)
   let propose_fn _name _dist current_val =
-    let step = (Random.float 0.4) -. 0.2 in (* step in [-0.2, 0.2] *)
-    Some (current_val +. step)
+    let step = (Random.float 1.0) -. 0.5 in
+    Some (max 0.0 (min (float_of_int num_states) (current_val +. step)))
   in
   
-  (* Run MH for 100 iterations *)
-  let num_iterations = 100 in
-  let (traces, accepted) = run_mh toy_hmm_model num_iterations propose_fn in
+  (* Run MH for 200 iterations *)
+  let num_iterations = 200 in
+  let (traces, accepted) = run_mh hmm_model num_iterations propose_fn in
   
-  (* Compute average state from last 50 traces (after burn-in) *)
-  let burn_in = 50 in
+  (* Compute average states from last 100 traces (after burn-in) *)
+  let burn_in = 100 in
   let samples = List.filteri (fun i _ -> i >= burn_in) traces in
-  let state_samples = List.filter_map (fun trace ->
-    Hashtbl.find_opt trace.choices "state"
-  ) samples in
-  let avg_state = 
-    if state_samples = [] then 0.0
-    else List.fold_left (+.) 0.0 state_samples /. float_of_int (List.length state_samples)
-  in
+  
+  (* Average state estimates for each time step *)
+  let state_estimates = List.init (Array.length observations) (fun t ->
+    let state_key = "state_" ^ string_of_int t in
+    let vals = List.filter_map (fun trace -> Hashtbl.find_opt trace.choices state_key) samples in
+    if vals = [] then 0.0 else List.fold_left (+.) 0.0 vals /. float_of_int (List.length vals)
+  ) in
   
   let acceptance_rate = float_of_int accepted /. float_of_int num_iterations in
   
-  Printf.printf "MH: Ran %d iterations, accepted %d (%.1f%% acceptance)\n" 
+  Printf.printf "MH-HMM: Ran %d iterations, accepted %d (%.1f%% acceptance)\n" 
     num_iterations accepted (acceptance_rate *. 100.0);
-  Printf.printf "MH: Estimated hidden state = %.2f (observation was 1.5)\n" avg_state;
-  Printf.printf "MH: Final trace log_prob = %.2f\n" (List.hd (List.rev traces)).log_prob;
+  Printf.printf "MH-HMM: Observations: [%.1f; %.1f; %.1f; %.1f]\n" 
+    observations.(0) observations.(1) observations.(2) observations.(3);
+  Printf.printf "MH-HMM: Estimated states: [";
+  List.iteri (fun i est -> 
+    if i > 0 then Printf.printf "; ";
+    Printf.printf "%.1f" est
+  ) state_estimates;
+  Printf.printf "]\n";
   print_endline "=== End MH Demo ===\n"
 

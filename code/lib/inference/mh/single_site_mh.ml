@@ -3,6 +3,7 @@
 open Effect
 open Effects
 open Mh_base
+open Models
 
 type variable_selector = trace -> string option
 let random_variable_selector trace =
@@ -46,25 +47,26 @@ let run_single_site_mh (type a)
   iterate 0 initial_trace [] 0
 
 let demo_single_site_mh () =
-  print_endline "\n=== Single-Site MH Demo ===";
+  print_endline "\n=== Single-Site MH Demo: HMM ===";
   
-  let two_var_model () =
-    let x = perform (Sample { name = "x"; dist = Normal (0.0, 1.0) }) in
-    let y = perform (Sample { name = "y"; dist = Normal (0.0, 1.0) }) in
-    perform (Observe { name = "obs_x"; dist = Normal (x, 0.5); obs = 1.0 });
-    perform (Observe { name = "obs_y"; dist = Normal (y, 0.5); obs = 2.0 });
-    (x, y)
-  in
+  let observations = [| 1.0; 2.0; 2.5; 3.0 |] in
+  let num_states = 3 in
   
-  let (traces, accepted) = run_single_site_mh two_var_model 300 0.3 in
-  let acceptance_rate = float_of_int accepted /. 300.0 in
+  let hmm_model () = Hmm.hidden_markov_model num_states observations in
   
-  let samples = List.filteri (fun i _ -> i >= 150) traces in
-  let x_samples = List.filter_map (fun t -> Hashtbl.find_opt t.choices "x") samples in
-  let y_samples = List.filter_map (fun t -> Hashtbl.find_opt t.choices "y") samples in
-  let avg_x = List.fold_left (+.) 0.0 x_samples /. float_of_int (List.length x_samples) in
-  let avg_y = List.fold_left (+.) 0.0 y_samples /. float_of_int (List.length y_samples) in
+  let (traces, accepted) = run_single_site_mh hmm_model 250 0.5 in
+  let acceptance_rate = float_of_int accepted /. 250.0 in
+  let samples = List.filteri (fun i _ -> i >= 125) traces in
+  let state_estimates = List.init (Array.length observations) (fun t ->
+    let state_key = "state_" ^ string_of_int t in
+    let vals = List.filter_map (fun trace -> Hashtbl.find_opt trace.choices state_key) samples in
+    if vals = [] then 0.0 else List.fold_left (+.) 0.0 vals /. float_of_int (List.length vals)
+  ) in
   
-  Printf.printf "Single-Site MH: %d iterations, %.1f%% acceptance\n" 300 (acceptance_rate *. 100.0);
-  Printf.printf "Estimated x = %.3f (obs 1.0), y = %.3f (obs 2.0)\n" avg_x avg_y;
+  Printf.printf "Single-Site MH-HMM: %d iterations, %.1f%% acceptance\n" 250 (acceptance_rate *. 100.0);
+  Printf.printf "Observations: [%.1f; %.1f; %.1f; %.1f]\n" 
+    observations.(0) observations.(1) observations.(2) observations.(3);
+  Printf.printf "Estimated states: [";
+  List.iteri (fun i est -> if i > 0 then Printf.printf "; "; Printf.printf "%.1f" est) state_estimates;
+  Printf.printf "]\n";
   print_endline "=== End Single-Site MH Demo ===\n"

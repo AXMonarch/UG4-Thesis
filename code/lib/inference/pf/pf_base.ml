@@ -3,6 +3,7 @@
 open Effect
 open Effect.Deep
 open Effects
+open Models
 
 type particle = {
   particle_trace : trace;
@@ -215,38 +216,42 @@ let reset_weights particles =
     { p with weight = uniform_weight; log_weight = log uniform_weight }
   ) particles
 
-(** Toy HMM demo: Simple 2-state HMM with one observation *)
+(** HMM demo using actual model from Models.Hmm *)
 let demo_toy_hmm () =
-  print_endline "\n=== Particle Filter Demo: Toy HMM ===";
+  print_endline "\n=== Particle Filter Demo: HMM ===";
   
-  (* Simple probabilistic model: sample a hidden state, observe data *)
-  let toy_hmm_model () =
-    let state = perform (Sample { name = "state"; dist = Uniform (0.0, 2.0) }) in
-    let obs_value = 1.5 in
-    perform (Observe { name = "obs"; dist = Normal (state, 0.5); obs = obs_value });
-    int_of_float state
-  in
+  (* Create observations for a 3-state HMM *)
+  let observations = [| 1.0; 2.0; 2.5; 3.0 |] in
+  let num_states = 3 in
   
-  (* Run particle filter with 10 particles *)
-  let num_particles = 10 in
+  (* Wrap HMM model for particle filter *)
+  let hmm_model () = Hmm.hidden_markov_model num_states observations in
+  
+  (* Run particle filter with 20 particles *)
+  let num_particles = 20 in
   let particles = init_particles num_particles in
   
   (* Forward sample all particles *)
-  let (sampled_particles, _results) = propagate_particles toy_hmm_model particles in
+  let (sampled_particles, _results) = propagate_particles hmm_model particles in
   let normalized = normalize_weights sampled_particles in
   
   (* Compute effective sample size *)
   let ess = effective_sample_size normalized in
   
-  let estimated_state = estimate_state normalized "state" in
+  (* Estimate hidden states *)
+  let state_estimates = List.init (Array.length observations) (fun t ->
+    estimate_state normalized ("state_" ^ string_of_int t)
+  ) in
   
-  Printf.printf "PF: Ran %d particles, ESS = %.2f\n" num_particles ess;
-  Printf.printf "PF: Estimated hidden state = %.2f (observation was 1.5)\n" estimated_state;
-  Printf.printf "PF: Particle weights: [";
-  Array.iteri (fun i p -> 
+  Printf.printf "PF-HMM: Ran %d particles over %d time steps, ESS = %.2f\n" 
+    num_particles (Array.length observations) ess;
+  Printf.printf "PF-HMM: Observations: [%.1f; %.1f; %.1f; %.1f]\n" 
+    observations.(0) observations.(1) observations.(2) observations.(3);
+  Printf.printf "PF-HMM: Estimated states: [";
+  List.iteri (fun i est -> 
     if i > 0 then Printf.printf "; ";
-    Printf.printf "%.3f" p.weight
-  ) (Array.sub normalized 0 (min 5 (Array.length normalized)));
-  Printf.printf "...]\n";
+    Printf.printf "%.1f" est
+  ) state_estimates;
+  Printf.printf "]\n";
   print_endline "=== End PF Demo ===\n"
 

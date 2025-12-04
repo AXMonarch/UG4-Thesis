@@ -3,6 +3,7 @@
 open Effect
 open Effects
 open Mh_base
+open Models
 
 (** Particle Metropolis-Hastings (PMH):
 Uses particle filtering to estimate the likelihood,
@@ -64,22 +65,26 @@ let run_particle_mh (type a)
   iterate 0 initial_state [] 0
 
 let demo_particle_mh () =
-  print_endline "\n=== Particle MH Demo ===";
+  print_endline "\n=== Particle MH Demo: HMM ===";
   
-  let sequential_model () =
-    let state = perform (Sample { name = "state"; dist = Normal (0.0, 1.0) }) in
-    perform (Observe { name = "obs"; dist = Normal (state, 0.3); obs = 1.5 });
-    state
-  in
+  let observations = [| 1.5; 2.0; 2.5 |] in
+  let num_states = 3 in
   
-  let propose_fn _name _dist current = Some (current +. (Random.float 0.6 -. 0.3)) in
-  let (traces, accepted) = run_particle_mh sequential_model 50 10 propose_fn in
-  let acceptance_rate = float_of_int accepted /. 50.0 in
+  let hmm_model () = Hmm.hidden_markov_model num_states observations in
   
-  let samples = List.filteri (fun i _ -> i >= 25) traces in
-  let state_samples = List.filter_map (fun t -> Hashtbl.find_opt t.choices "state") samples in
-  let avg_state = List.fold_left (+.) 0.0 state_samples /. float_of_int (List.length state_samples) in
+  let propose_fn _name _dist current = Some (max 0.0 (min (float_of_int num_states) (current +. (Random.float 1.0 -. 0.5)))) in
+  let (traces, accepted) = run_particle_mh hmm_model 40 8 propose_fn in
+  let acceptance_rate = float_of_int accepted /. 40.0 in
+  let samples = List.filteri (fun i _ -> i >= 20) traces in
+  let state_estimates = List.init (Array.length observations) (fun t ->
+    let state_key = "state_" ^ string_of_int t in
+    let vals = List.filter_map (fun trace -> Hashtbl.find_opt trace.choices state_key) samples in
+    if vals = [] then 0.0 else List.fold_left (+.) 0.0 vals /. float_of_int (List.length vals)
+  ) in
   
-  Printf.printf "Particle MH: %d iterations with %d particles, %.1f%% acceptance\n" 50 10 (acceptance_rate *. 100.0);
-  Printf.printf "Estimated state = %.3f (observed 1.5)\n" avg_state;
+  Printf.printf "Particle MH-HMM: %d iterations with %d particles, %.1f%% acceptance\n" 40 8 (acceptance_rate *. 100.0);
+  Printf.printf "Observations: [%.1f; %.1f; %.1f]\n" observations.(0) observations.(1) observations.(2);
+  Printf.printf "Estimated states: [";
+  List.iteri (fun i est -> if i > 0 then Printf.printf "; "; Printf.printf "%.1f" est) state_estimates;
+  Printf.printf "]\n";
   print_endline "=== End Particle MH Demo ===\n"

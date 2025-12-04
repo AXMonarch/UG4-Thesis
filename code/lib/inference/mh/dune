@@ -1,4 +1,4 @@
 (library
  (name mh)
  (public_name code.mh)
- (libraries effects utils))
+ (libraries effects utils models))

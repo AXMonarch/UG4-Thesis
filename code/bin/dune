@@ -2,3 +2,8 @@
  (public_name code)
  (name main)
  (libraries effects utils models mh pf))
+
+(executable
+ (public_name demo)
+ (name demo)
+ (libraries effects utils models mh pf multicont))

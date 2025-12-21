@@ -1,0 +1,15 @@
+(library
+ (name bench_utils)
+ (modules bench_utils))
+
+(executable
+ (public_name bench_mh_hmm)
+ (name bench_mh_hmm)
+ (modules bench_mh_hmm)
+ (libraries effects utils models mh bench_utils))
+
+(executable
+ (public_name bench_mh_pf)
+ (name bench_mh_pf)
+ (modules bench_mh_pf)
+ (libraries effects utils models pf bench_utils))

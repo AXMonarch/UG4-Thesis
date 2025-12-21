@@ -1,15 +1,34 @@
 open Bench_utils
 open Models
-open Pf.Multinomial_pf
+open Pf.Pf_base
 
 let generate_observations n =
   Array.init n (fun _ -> Random.float 10.0)
+
+let simple_resample particles =
+  let n = Array.length particles in
+  let normalized = normalize_weights particles in
+  let cumulative = Array.make n 0.0 in
+  cumulative.(0) <- normalized.(0).weight;
+  for i = 1 to n - 1 do
+    cumulative.(i) <- cumulative.(i - 1) +. normalized.(i).weight
+  done;
+  let new_particles = Array.init n (fun _ ->
+    let r = Random.float 1.0 in
+    let rec find_index i =
+      if i >= n - 1 || r <= cumulative.(i) then i
+      else find_index (i + 1)
+    in
+    let idx = find_index 0 in
+    copy_particle normalized.(idx)
+  ) in
+  reset_weights new_particles
 
 let bench_hmm_length seq_len num_particles =
   let obs = generate_observations seq_len in
   let program _step () = Hmm.hidden_markov_model 5 obs in
   fun () ->
-    let _ = run_multinomial_pf program num_particles seq_len 0.5 in
+    let _ = run_pf program num_particles seq_len simple_resample 0.5 in
     ()
 
 let run_benchmarks () =

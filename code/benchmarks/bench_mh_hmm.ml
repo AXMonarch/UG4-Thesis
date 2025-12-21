@@ -1,15 +1,20 @@
 open Bench_utils
 open Models
-open Mh.Single_site_mh
+open Mh.Mh_base
 
 let generate_observations n =
   Array.init n (fun _ -> Random.float 10.0)
+
+let simple_propose_fn _name _dist current_val =
+  let step_size = 0.5 in
+  let step = (Random.float (2.0 *. step_size)) -. step_size in
+  Some (current_val +. step)
 
 let bench_hmm_length seq_len num_mh_iters =
   let obs = generate_observations seq_len in
   let program () = Hmm.hidden_markov_model 5 obs in
   fun () ->
-    let _ = run_single_site_mh program num_mh_iters 0.5 in
+    let _ = run_mh program num_mh_iters simple_propose_fn in
     ()
 
 let run_benchmarks () =

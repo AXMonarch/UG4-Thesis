@@ -21,7 +21,8 @@
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends (ocaml (>= 5.3.0))
-           multicont)
+           multicont
+           mtime)
  (tags
   ("add topics" "to describe" your project)))
 

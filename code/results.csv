@@ -1,0 +1,17 @@
+Benchmark Configuration:
+  Algorithm: MH
+  Sequence lengths: 10, 20, 50, 100
+  MH iterations: 100, 200
+  Repeats per configuration: 10
+
+=== Metropolis-Hastings Benchmarks ===
+
+Sequence_Length,MH_Iterations,Avg_Time_ms,Std_Dev_ms
+10,100,0.546,0.041
+10,200,0.991,0.012
+20,100,1.020,0.017
+20,200,2.030,0.026
+50,100,2.625,0.034
+50,200,5.246,0.050
+100,100,5.395,0.060
+100,200,10.785,0.044

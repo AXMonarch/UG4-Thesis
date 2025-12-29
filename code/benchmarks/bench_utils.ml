@@ -1,8 +1,10 @@
+(* Use mtime for high-resolution timing *)
 let time f =
-  let start = Sys.time () in
+  let counter = Mtime_clock.counter () in
   f ();
-  let stop = Sys.time () in
-  (stop -. start) *. 1000.0
+  let elapsed = Mtime_clock.count counter in
+  (* Convert span to milliseconds: ns -> ms *)
+  Mtime.Span.to_float_ns elapsed /. 1_000_000.0
 
 let repeat_time n f =
   let total_time = ref 0.0 in

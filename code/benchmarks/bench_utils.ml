@@ -1,9 +1,7 @@
-(* Use mtime for high-resolution timing *)
 let time f =
   let counter = Mtime_clock.counter () in
   f ();
   let elapsed = Mtime_clock.count counter in
-  (* Convert span to milliseconds: ns -> ms *)
   Mtime.Span.to_float_ns elapsed /. 1_000_000.0
 
 let repeat_time n f =

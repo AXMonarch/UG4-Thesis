@@ -14,12 +14,12 @@ This can be more efficient when the proposal closely matches the target. *)
  rather it depends only on the prior*)    
 
 let independence_propose _name dist _current_val =
-  Some (sample_from_dist dist)
+  sample_from_dist dist
 
 let run_independence_mh (type a)
     (program : unit -> a)
-    (num_iterations : int) : trace list * int =
-  run_mh program num_iterations independence_propose
+    (num_iterations : int) : a list =
+  run_mh ~iters:num_iterations ~propose:independence_propose program
 
 let demo_independence_mh () =
   print_endline "\n=== Independence MH Demo: HMM ===";
@@ -29,18 +29,10 @@ let demo_independence_mh () =
   
   let hmm_model () = Hmm.hidden_markov_model num_states observations in
   
-  let (traces, accepted) = run_independence_mh hmm_model 150 in
-  let acceptance_rate = float_of_int accepted /. 150.0 in
-  let samples = List.filteri (fun i _ -> i >= 75) traces in
-  let state_estimates = List.init (Array.length observations) (fun t ->
-    let state_key = "state_" ^ string_of_int t in
-    let vals = List.filter_map (fun trace -> Hashtbl.find_opt trace.choices state_key) samples in
-    if vals = [] then 0.0 else List.fold_left (+.) 0.0 vals /. float_of_int (List.length vals)
-  ) in
+  let results = run_independence_mh hmm_model 150 in
   
-  Printf.printf "Independence MH-HMM: %d iterations, %.1f%% acceptance\n" 150 (acceptance_rate *. 100.0);
+  Printf.printf "Independence MH-HMM: %d iterations\n" 150;
   Printf.printf "Observations: [%.1f; %.1f; %.1f]\n" observations.(0) observations.(1) observations.(2);
-  Printf.printf "Estimated states: [";
-  List.iteri (fun i est -> if i > 0 then Printf.printf "; "; Printf.printf "%.1f" est) state_estimates;
-  Printf.printf "]\n";
+  Printf.printf "Generated %d samples\n" (List.length results);
   print_endline "=== End Independence MH Demo ===\n"
+

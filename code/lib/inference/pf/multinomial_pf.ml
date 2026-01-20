@@ -5,47 +5,12 @@ open Effects
 open Pf_base
 open Models
 
-(** Multinomial Resampling for Particle Filter:
-    Standard resampling scheme that samples particles with replacement
-    according to their normalized weights. *)
-
-(** Multinomial resampling: sample N particles with replacement based on weights *)
-let multinomial_resample (particles : particle_cloud) : particle_cloud =
-  let n = Array.length particles in
-  
-  (* Normalize weights *)
-  let normalized = normalize_weights particles in
-  
-  (* Build cumulative distribution *)
-  let cumulative = Array.make n 0.0 in
-  cumulative.(0) <- normalized.(0).weight;
-  for i = 1 to n - 1 do
-    cumulative.(i) <- cumulative.(i - 1) +. normalized.(i).weight
-  done;
-  
-  (* Sample n particles *)
-  let new_particles = Array.init n (fun _ ->
-    let r = Random.float 1.0 in
-    let rec find_index i =
-      if i >= n - 1 || r <= cumulative.(i) then i
-      else find_index (i + 1)
-    in
-    let idx = find_index 0 in
-    copy_particle normalized.(idx)
-  ) in
-  
-  (* Reset weights to uniform after resampling *)
-  reset_weights new_particles
-
-(** Run multinomial particle filter *)
 let run_multinomial_pf (type a)
-    (program : int -> unit -> a)
+    (model : unit -> a)
     (num_particles : int)
-    (num_steps : int)
-    (resample_threshold : float) : particle_cloud list =
-  run_pf program num_particles num_steps multinomial_resample resample_threshold
+    (resample_threshold : float) : particle_cloud =
+  pf_handler ~particles:num_particles ~resample_threshold model
 
-(** Demo: HMM with multinomial resampling *)
 let demo_multinomial_pf () =
   print_endline "\n=== Multinomial PF Demo: HMM ===";
   
@@ -55,20 +20,24 @@ let demo_multinomial_pf () =
   let hmm_model () = Hmm.hidden_markov_model num_states observations in
   
   let num_particles = 30 in
-  let particles = init_particles num_particles in
-  let (resampled, _results) = propagate_particles hmm_model particles in
-  let normalized = normalize_weights resampled in
-  let after_resample = multinomial_resample normalized in
+  let cloud = run_multinomial_pf hmm_model num_particles 0.5 in
   
-  let ess_before = effective_sample_size normalized in
-  let ess_after = effective_sample_size after_resample in
+  let weighted = normalize_log_weights cloud in
+  let ess = effective_sample_size weighted in
   
   let state_estimates = List.init (Array.length observations) (fun t ->
-    estimate_state after_resample ("state_" ^ string_of_int t)
+    let state_key = "state_" ^ string_of_int t in
+    let vals = Array.fold_left (fun acc (p, _w) ->
+      match Hashtbl.find_opt p.trace.choices state_key with
+      | Some v -> v :: acc
+      | None -> acc
+    ) [] weighted in
+      if vals = [] then 0.0
+      else List.fold_left (+.) 0.0 vals /. float_of_int (List.length vals)
   ) in
   
   Printf.printf "Multinomial PF-HMM: %d particles\n" num_particles;
-  Printf.printf "ESS before resample = %.2f, after = %.2f\n" ess_before ess_after;
+  Printf.printf "ESS before resample = %.2f, after = %.2f\n" ess (float_of_int num_particles);
   Printf.printf "Observations: [%.1f; %.1f; %.1f; %.1f]\n" 
     observations.(0) observations.(1) observations.(2) observations.(3);
   Printf.printf "Estimated states: [";

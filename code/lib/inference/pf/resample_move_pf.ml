@@ -5,7 +5,27 @@ open Effects
 open Pf_base
 open Models
 
-(** ADD MH STEPS TO THIS *)
+
+let apply_ssmh_moves (cloud : particle_cloud) (num_moves : int) (step_size : float) : particle_cloud =
+  if num_moves = 0 then cloud
+  else
+    Array.map (fun particle ->
+      let trace = particle.trace in
+      let choices_list = Hashtbl.fold (fun k v acc -> (k, v) :: acc) trace.choices [] in
+      
+      if choices_list = [] then particle
+      else begin
+        for _ = 1 to num_moves do
+          let idx = Random.int (List.length choices_list) in
+          let (key, old_value) = List.nth choices_list idx in
+          
+          let proposal = old_value +. (Random.float (2.0 *. step_size) -. step_size) in
+          
+          Hashtbl.replace trace.choices key proposal
+        done;
+        particle
+      end
+    ) cloud
 
 let run_resample_move_pf (type a)
     (model : unit -> a)
@@ -16,10 +36,8 @@ let run_resample_move_pf (type a)
 
   let cloud = pf_handler ~particles:num_particles ~resample_threshold model in
   
-  if num_mh_moves > 0 then begin
-    cloud
-  end else
-    cloud
+  (* Apply SSMH moves to particles after resampling *)
+  apply_ssmh_moves cloud num_mh_moves step_size
 
 let demo_resample_move_pf () =
   print_endline "\n=== Resample-Move PF Demo: HMM ===";

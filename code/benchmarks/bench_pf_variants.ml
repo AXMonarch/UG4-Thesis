@@ -1,25 +1,9 @@
 (*
-  Benchmark Suite: PF Variants Performance Evaluation
-  
-  This benchmark evaluates all PF variants on two key experiments:
-  
+
   Experiment 1: Varying Dataset Size (Fixed Algorithm Parameters)
-  - Tests how each PF variant scales with increasing data
-  - Fixed: 100 particles for all variants
-  - Variable: Dataset sizes from 50 to 500
-  
+ 
   Experiment 2: Varying Algorithm Parameters (Fixed Dataset Size)
-  - Tests how each PF variant scales with increasing particles
-  - Fixed: Dataset size of 50
-  - Variable: Number of particles from 50 to 500
-  
-  PF Variants tested:
-  - Multinomial PF
-  - Resample-Move PF
-  
-  Models:
-  - HMM (Hidden Markov Model)
-  - Linear Regression
+
 *)
 
 open Bench_utils
@@ -30,7 +14,6 @@ open Pf.Resample_move_pf
 type pf_variant = MultinomialPF | ResampleMovePF
 type model_type = HMM | LinRegr
 
-(* Data generation functions *)
 let generate_hmm_observations n =
   Array.init n (fun _ -> Random.float 10.0)
 
@@ -40,10 +23,8 @@ let generate_linregr_data n =
     let y = 2.0 *. x +. 3.0 +. (Random.float 2.0 -. 1.0) in
     (x, y))
 
-(* Configuration *)
 let num_repeats = 10
 
-(* ========== EXPERIMENT 1: Varying Dataset Size ========== *)
 module Experiment1 = struct
   let fixed_particles = 100
   let fixed_resample_threshold = 0.5
@@ -51,7 +32,6 @@ module Experiment1 = struct
   let fixed_rmpf_step_size = 0.5
   let dataset_sizes = [50; 100; 150; 200; 250; 300; 350; 400; 450; 500]
 
-  (* Benchmark functions for each variant *)
   let bench_multinomial_pf model_type size =
     match model_type with
     | HMM ->
@@ -138,7 +118,6 @@ module Experiment2 = struct
   let fixed_rmpf_step_size = 0.5
   let particle_counts = [50; 100; 150; 200; 250; 300; 350; 400; 450; 500]
 
-  (* Benchmark functions for each variant *)
   let bench_multinomial_pf model_type num_particles =
     match model_type with
     | HMM ->
@@ -220,7 +199,6 @@ module Experiment2 = struct
     Printf.printf "Results saved to benchmark_results/%s\n\n" filename
 end
 
-(* ========== MAIN ========== *)
 let () =
   Random.init 42;
   Printf.printf "\n=== PF Variants Benchmark Suite ===\n\n";
@@ -228,7 +206,6 @@ let () =
   let all_variants = [MultinomialPF; ResampleMovePF] in
   let all_models = [HMM; LinRegr] in
   
-  (* Run Experiment 1 for all combinations *)
   Printf.printf "========== EXPERIMENT 1: Varying Dataset Size ==========\n\n";
   List.iter (fun variant ->
     List.iter (fun model ->
@@ -236,7 +213,6 @@ let () =
     ) all_models
   ) all_variants;
   
-  (* Run Experiment 2 for all combinations *)
   Printf.printf "========== EXPERIMENT 2: Varying Particles ==========\n\n";
   List.iter (fun variant ->
     List.iter (fun model ->

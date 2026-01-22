@@ -1,25 +1,9 @@
 (*
-  Benchmark Suite: MH Variants Performance Evaluation
-  
-  This benchmark evaluates all MH variants on two key experiments:
-  
+
   Experiment 1: Varying Dataset Size (Fixed Algorithm Parameters)
-  - Tests how each MH variant scales with increasing data
-  - Fixed: 100 iterations for all variants
-  - Variable: Dataset sizes from 50 to 500
-  
+ 
   Experiment 2: Varying Algorithm Parameters (Fixed Dataset Size)
-  - Tests how each MH variant scales with increasing iterations
-  - Fixed: Dataset size of 50
-  - Variable: Iterations from 100 to 1000
-  
-  MH Variants tested:
-  - Single-Site MH
-  - Particle MH (simplified version)
-  
-  Models:
-  - HMM (Hidden Markov Model)
-  - Linear Regression
+
 *)
 
 open Bench_utils

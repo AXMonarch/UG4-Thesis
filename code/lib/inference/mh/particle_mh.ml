@@ -16,7 +16,7 @@ let run_particle_mh (type a)
     (num_iterations : int)
     (_num_particles : int)  (* Not used in simplified version *)
     (step_size : float) : a list =
-  (* Use a random walk proposal like single-site MH *)
+  (* Block/Joint MH: propose all variables together with random walk *)
   let propose_fn _name _dist current =
     let step = (Random.float (2.0 *. step_size)) -. step_size in
     current +. step

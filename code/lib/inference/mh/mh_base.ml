@@ -15,6 +15,8 @@ let empty_trace () =
 let copy_trace t =
   { choices = Hashtbl.copy t.choices; log_prob = t.log_prob }
 
+let trace_dists = Hashtbl.create 16
+
 let sample_from_dist = function
   | Uniform (a, b) ->
       a +. Random.float (b -. a)
@@ -56,6 +58,7 @@ let mh_handler
       match program () with
       | v -> v
       | effect (Sample { name; dist }), k ->
+          Hashtbl.replace trace_dists name dist;
           let value =
             match Hashtbl.find_opt trace.choices name with
             | Some v -> v
@@ -86,7 +89,11 @@ let mh_handler
       let proposed_trace =
         let t = copy_trace curr_trace in
         Hashtbl.iter (fun name v ->
-          ()
+          match Hashtbl.find_opt trace_dists name with
+          | Some dist ->
+              let new_val = propose name dist v in
+              Hashtbl.replace t.choices name new_val
+          | None -> ()
         ) t.choices;
         t
       in

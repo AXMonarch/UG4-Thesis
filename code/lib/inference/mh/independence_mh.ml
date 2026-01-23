@@ -13,13 +13,13 @@ This can be more efficient when the proposal closely matches the target. *)
  does not depend on the current state 
  rather it depends only on the prior*)    
 
-let independence_propose _name dist _current_val =
-  sample_from_dist dist
-
 let run_independence_mh (type a)
     (program : unit -> a)
     (num_iterations : int) : a list =
-  run_mh ~iters:num_iterations ~propose:independence_propose program
+  let propose_fn _name dist _current_val =
+    sample_from_dist dist
+  in
+  run_mh ~iters:num_iterations ~propose:propose_fn program
 
 let demo_independence_mh () =
   print_endline "\n=== Independence MH Demo: HMM ===";

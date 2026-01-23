@@ -5,17 +5,26 @@ open Effects
 open Mh_base
 open Models
 
-let make_single_site_propose (step_size : float) =
-  fun _name _dist current_val ->
-    let step = (Random.float (2.0 *. step_size)) -. step_size in
-    current_val +. step
-
 let run_single_site_mh (type a)
     (program : unit -> a)
     (num_iterations : int)
     (step_size : float) : a list =
-  let propose_fn = make_single_site_propose step_size in
-  run_mh ~iters:num_iterations ~propose:propose_fn program
+  let selected_var = ref "" in
+  let propose_fn name _dist current_val =
+    if !selected_var = "" then selected_var := name;
+    if name = !selected_var then
+      let step = (Random.float (2.0 *. step_size)) -. step_size in
+      current_val +. step
+    else
+      current_val
+  in
+  let all_results = ref [] in
+  for _ = 1 to num_iterations do
+    selected_var := "";
+    let results = run_mh ~iters:1 ~propose:propose_fn program in
+    all_results := results @ !all_results
+  done;
+  !all_results
 
 let demo_single_site_mh () =
   print_endline "\n=== Single-Site MH Demo: HMM ===";

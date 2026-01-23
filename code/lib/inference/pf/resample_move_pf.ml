@@ -1,31 +1,97 @@
 [@@@ocaml.warning "-27-33-39"]
 
 open Effect
+open Effect.Deep
 open Effects
 open Pf_base
 open Models
 
 
-let apply_ssmh_moves (cloud : particle_cloud) (num_moves : int) (step_size : float) : particle_cloud =
-  if num_moves = 0 then cloud
-  else
-    Array.map (fun particle ->
-      let trace = particle.trace in
-      let choices_list = Hashtbl.fold (fun k v acc -> (k, v) :: acc) trace.choices [] in
+let resample_move_pf_handler
+    ~(particles : int)
+    ~(resample_threshold : float)
+    ~(num_mh_moves : int)
+    ~(step_size : float)
+    ~(model_dist_tracker : (string, distribution) Hashtbl.t)
+    (model : unit -> 'a)
+  : particle_cloud =
+
+  let cloud = Array.init particles (fun _ -> empty_particle ()) in
+
+  let apply_mcmc_move particle =
+    let choices_list = Hashtbl.fold (fun k v acc -> (k, v) :: acc) particle.trace.choices [] in
+    if choices_list = [] then particle
+    else
+      let old_log_prob = particle.trace.log_prob in
       
-      if choices_list = [] then particle
-      else begin
-        for _ = 1 to num_moves do
-          let idx = Random.int (List.length choices_list) in
-          let (key, old_value) = List.nth choices_list idx in
+      let idx = Random.int (List.length choices_list) in
+      let (key, old_value) = List.nth choices_list idx in
+      
+      let proposal = old_value +. (Random.float (2.0 *. step_size) -. step_size) in
+      
+      match Hashtbl.find_opt model_dist_tracker key with
+      | None -> particle
+      | Some dist ->
+          let new_log_prob = old_log_prob -. log_pdf dist old_value +. log_pdf dist proposal in
           
-          let proposal = old_value +. (Random.float (2.0 *. step_size) -. step_size) in
-          
-          Hashtbl.replace trace.choices key proposal
-        done;
-        particle
-      end
-    ) cloud
+          let alpha = min 1.0 (exp (new_log_prob -. old_log_prob)) in
+          if Random.float 1.0 < alpha then begin
+            Hashtbl.replace particle.trace.choices key proposal;
+            particle.trace.log_prob <- new_log_prob;
+          end;
+          particle
+  in
+
+  let rec handle () =
+    match model () with
+    | _ -> cloud
+
+    | effect (Sample { name; dist }), k ->
+        Hashtbl.replace model_dist_tracker name dist;
+        Array.iter (fun p ->
+          let v =
+            match Hashtbl.find_opt p.trace.choices name with
+            | Some v -> v
+            | None ->
+                let v = sample_from_dist dist in
+                Hashtbl.add p.trace.choices name v;
+                v
+          in
+          p.trace.log_prob <- p.trace.log_prob +. log_pdf dist v
+        ) cloud;
+        continue k (Hashtbl.find cloud.(0).trace.choices name)
+
+    | effect (Observe { dist; obs; _ }), k ->
+        Array.iter (fun p ->
+          let lp = log_pdf dist obs in
+          p.trace.log_prob <- p.trace.log_prob +. lp;
+          p.log_weight <- p.log_weight +. lp
+        ) cloud;
+
+        let weighted = normalize_log_weights cloud in
+        let ess = effective_sample_size weighted in
+        let n = float_of_int particles in
+
+        let new_cloud =
+          if ess < resample_threshold *. n then begin
+            let resampled = resample cloud weighted in
+            Array.map (fun p ->
+              let moved_p = ref p in
+              for _ = 1 to num_mh_moves do
+                moved_p := apply_mcmc_move !moved_p
+              done;
+              !moved_p
+            ) resampled
+          end
+          else
+            cloud
+        in
+
+        Array.iteri (fun i p -> cloud.(i) <- p) new_cloud;
+        continue k ()
+  in
+
+  handle ()
 
 let run_resample_move_pf (type a)
     (model : unit -> a)
@@ -33,11 +99,14 @@ let run_resample_move_pf (type a)
     (num_mh_moves : int)
     (step_size : float)
     (resample_threshold : float) : particle_cloud =
-
-  let cloud = pf_handler ~particles:num_particles ~resample_threshold model in
-  
-  (* Apply SSMH moves to particles after resampling *)
-  apply_ssmh_moves cloud num_mh_moves step_size
+  let dist_tracker = Hashtbl.create 16 in
+  resample_move_pf_handler 
+    ~particles:num_particles 
+    ~resample_threshold 
+    ~num_mh_moves 
+    ~step_size 
+    ~model_dist_tracker:dist_tracker
+    model
 
 let demo_resample_move_pf () =
   print_endline "\n=== Resample-Move PF Demo: HMM ===";

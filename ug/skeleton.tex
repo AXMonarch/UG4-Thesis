@@ -86,21 +86,7 @@ summary of your report.
    {\end{frontenv}\newpage}
 
 \begin{ethics}
-\textbf{Instructions:} \emph{Agree with your supervisor which
-statement you need to include. Then delete the statement that you are not using,
-and the instructions in italics.\\
-\textbf{Either complete and include this statement:}}\\ % DELETE THESE INSTRUCTIONS
-%
-% IF ETHICS APPROVAL WAS REQUIRED:
-This project obtained approval from the Informatics Research Ethics committee.\\
-Ethics application number: ???\\
-Date when approval was obtained: YYYY-MM-DD\\
-%
-\emph{[If the project required human participants, edit as appropriate, otherwise delete:]}\\ % DELETE THIS LINE
-The participants' information sheet and a consent form are included in the appendix.\\
-%
-% IF ETHICS APPROVAL WAS NOT REQUIRED:
-\textbf{\emph{Or include this statement:}}\\ % DELETE THIS LINE
+
 This project was planned in accordance with the Informatics Research
 Ethics policy. It did not involve any aspects that required approval
 from the Informatics Research Ethics committee.
@@ -120,84 +106,70 @@ Any acknowledgements go here.
 
 \chapter{Introduction}
 
-The preliminary material of your report should contain:
-\begin{itemize}
-\item
-The title page.
-\item
-An abstract page.
-\item
-Declaration of ethics and own work.
-\item
-Optionally an acknowledgements page.
-\item
-The table of contents.
-\end{itemize}
+This chapter introduces the motivation behind effect-based probabilistic programming and explains the rationale for modeling inference using algebraic effects and handlers. In addition, it outlines the objectives and contributions of the project and presents the structure of the report.
 
-As in this example \texttt{skeleton.tex}, the above material should be
-included between:
-\begin{verbatim}
-\begin{preliminary}
-    ...
-\end{preliminary}
-\end{verbatim}
-This style file uses roman numeral page numbers for the preliminary material.
+\section{Motivation for Effects in Probabilistic Programming}
 
-The main content of the dissertation, starting with the first chapter,
-starts with page~1. \emph{\textbf{The main content must not go beyond page~40.}}
+Probabilistic programming languages (PPLs) provide a high-level abstraction for expressing statistical models while delegating inference to a general-purpose inference engine. This separation allows users to focus on model specification rather than algorithmic details. 
 
-The report then contains a bibliography and any appendices, which may go beyond
-page~40. The appendices are only for any supporting material that's important to
-go on record. However, you cannot assume markers of dissertations will read them.
+Many inference algorithms such as Metropolis-Hastings, Particle Filters, and their hybrid variants can be viewed as different execution strategies over the same underlying probabilistic model. The algorithms perform the same fundamental probabilistic operations and target the same posterior distribution, differing only in how they explore it.
 
-You may not change the dissertation format (e.g., reduce the font size, change
-the margins, or reduce the line spacing from the default single spacing). Be
-careful if you copy-paste packages into your document preamble from elsewhere.
-Some \LaTeX{} packages, such as \texttt{fullpage} or \texttt{savetrees}, change
-the margins of your document. Do not include them!
+In practice, the design of inference mechanisms in many PPLs tightly couples model execution with inference logic. For example, \textbf{Gen} requires models to be explicitly parameterized with execution structure, requiring the user to expose execution steps to support certain inference algorithms. \textbf{Pyro} requires a specialized method for each model to support sequential inference algorithms. Other languages such as \textbf{Anglican} use continuation-passing-style transformations to expose control over execution, but this control is obtained through global program rewriting instead of modular handlers, making inference logic harder to isolate and reuse.
 
-Over-length or incorrectly-formatted dissertations will not be accepted and you
-would have to modify your dissertation and resubmit. You cannot assume we will
-check your submission before the final deadline and if it requires resubmission
-after the deadline to conform to the page and style requirements you will be
-subject to the usual late penalties based on your final submission time.
 
-\section{Using Sections}
+Meng et al. addresses this limitation by formulating probabilistic programming in terms of algebraic effects and handlers. Their system, \textbf{ProbFX}, expresses probabilistic operations such as sampling, observations, and resampling as effects, while inference algorithms are expressed as effect handlers. This formulation makes the separation between model and inference explicit. A single model definition can be interpreted by multiple inference handlers, each implementing a different strategy for exploring the posterior distribution without requiring any modification to the model itself.
 
-Divide your chapters into sub-parts as appropriate.
+(PLACEHOLDER ASK DANIEL about scoping contributions)
 
-\section{Citations}
+While ProbFX demonstrates the expressive power of algebraic effects for probabilistic inference, questions remain about how these ideas transfer across languages and how alternative effect-based designs impact modularity and performance.
 
-When citing work using author names, your sentences should still read
-as correct English if any parts in parenthesis are removed.
-Use {\tt {\textbackslash}citet} when citing the name as text that's part of your sentence: 
-\begin{quote}
-  We follow the method of \citet{P1}.
-\end{quote}
-and use {\tt {\textbackslash}citep} for a parenthetical citation:
-\begin{quote}
-  It's possible to learn first-order Horn sequences from entailment \citep{P2}.
-\end{quote}
 
-You may use any consistent reference style that you prefer, including ``[1]'' numerical citations. 
+
+
+
+
+
+\section{Project Aims}
+
+\section{Project Contributions}
+
+\section{Report Structure}
+
+The remaining chapters are 
+
+Background
+
+Implementation
+    - Section for Immutable Traces
+    - Section for Multicont
+
+Testing Suite
+
+Evaluation and Reflections
+
+Conclusion and Future Work
 
 \chapter{Background}
 
 \section{Effects and Handlers}
 
-Effect handler-oriented programming is a programming paradigm that helps with the creation of composable code. Effects are able to extend exception handling by enabling continuation of a program halted by the detection of an exception. It is also possible to pass values to the program after the continuation. Keeping this in mind, you can implement multiple side effects with this paradigm like logging, non-determinism, and state management.
+Effect handler-oriented programming is a programming paradigm that helps with the creation of composable code. Effects are able to extend exception handling by enabling continuation of a program halted by the detection of an exception. It is also possible to pass values to the program after the continuation. Keeping this in mind, you can implement multiple computational effects in code with this paradigm like logging, non-determinism, and state management.
 
-An effect is defined by its effect signature, which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
+An effect is defined by its effect signature [Effects are interfaces], which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
 
-Handlers are implementations for a particular effect. Let us say you have an effect called \texttt{Crop}. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations.
+Handlers are implementations for a particular effect. Let us say you have an effect called \texttt{Crop} [CHANGE THIS TO ONE OF THE EFFECTS I WROTE BELOW]. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations. 
 
-These handlers are also extremely composable because of continuations. You can pass a value to a continuation that can invoke another handler, and so on. This creates a modular and composable style of code built on Algebraic Effect Handlers. 
+These handlers enable a high degree of composabality because of continuations. You can pass a value to a continuation that can invoke another handler, and so on. This creates a modular and composable style of code built on Effect Handlers. 
+
+[Bit on Mathematical Foundations of Effects]
+
+[https://dhil.net/research/papers/thesis.pdf]
 
 \section{Examples in Code}
 
 This section will highlight some practical examples of effect handlers in code. 
 
-I have elected to use OCaml to represent these examples, and to write the dissertation. OCaml has a rich effects system and is a functional language with strong pattern matching capabilities. Its support for algebraic effects and handlers provides a natural foundation for expressing probabilistic computations as composable and interpretable effects.
+I have chosen to use OCaml to represent these examples, and to write the dissertation. OCaml has a rich effects system and is a functional language with strong pattern matching capabilities. Its support for effects and handlers provides a natural foundation for expressing probabilistic computations as composable and interpretable effects.
 
 \subsection{Basic Components of an Effect Oriented Program}
 
@@ -273,6 +245,11 @@ When run, the program produces different results depending on the chosen handler
 
 \subsection{Prior Work}
 
+Automatic Differentiation via Effects and Handlers
+JESSE SIGAL
+
+HANDLING ALGEBRAIC EFFECTS
+GORDON D. PLOTKIN AND MATIJA PRETNAR
 
 
 \subsection{Probability}

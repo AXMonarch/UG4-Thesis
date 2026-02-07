@@ -1,0 +1,9 @@
+(library
+ (name ppfx_effects)
+ (wrapped false)
+ (modules effects runner ssmh model linreg))
+
+(executable
+ (name test)
+ (modules test)
+ (libraries ppfx_effects mtime mtime.clock.os))

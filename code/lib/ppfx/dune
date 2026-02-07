@@ -1,7 +1,7 @@
 (library
  (name ppfx_effects)
  (wrapped false)
- (modules effects runner ssmh model linreg))
+ (modules effects runner ssmh model linreg hmm))
 
 (executable
  (name test)

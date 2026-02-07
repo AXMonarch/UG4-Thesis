@@ -51,6 +51,9 @@ type distribution =
   | Uniform of float * float
   | Normal of float * float
   | Categorical of float array
+  | Beta of float * float
+  | Bernoulli of float
+  | Binomial of int * float
 
 (* Sample effect: draws a value from a distribution and records it at the given address *)
 (* Produces a float result representing the sampled value *)
@@ -135,6 +138,23 @@ module Dist = struct
             else find_category (i + 1) new_cumsum
         in
         find_category 0 0.0
+      | Beta (a, b) ->
+        (* Simple Beta via Gamma trick (placeholder, OK for now) *)
+        let ga = Random.float 1.0 ** (1.0 /. a) in
+        let gb = Random.float 1.0 ** (1.0 /. b) in
+        ga /. (ga +. gb)
+
+      | Bernoulli p ->
+        if u < p then 1.0 else 0.0
+
+      | Binomial (n, p) ->
+        let rec loop i acc =
+          if i = 0 then acc
+          else
+            let acc' = acc + if Random.float 1.0 < p then 1 else 0 in
+            loop (i - 1) acc'
+        in
+        float_of_int (loop n 0)
   
   (** Compute log probability of a value under a distribution *)
   let log_prob (dist : distribution) (x : float) : float =
@@ -157,4 +177,22 @@ module Dist = struct
           log (probs.(idx) /. total)
         else
           neg_infinity
+    | Beta (a, b) ->
+        if x > 0.0 && x < 1.0 then
+          (a -. 1.0) *. log x
+        +. (b -. 1.0) *. log (1.0 -. x)
+        else
+          neg_infinity
+
+    | Bernoulli p ->
+        if x = 1.0 then log p
+        else if x = 0.0 then log (1.0 -. p)
+        else neg_infinity
+
+    | Binomial (n, p) ->
+        let k = int_of_float x in
+        if k < 0 || k > n then neg_infinity
+        else
+          float_of_int k *. log p
+        +. float_of_int (n - k) *. log (1.0 -. p)
 end

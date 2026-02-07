@@ -14,6 +14,10 @@ let run_with_trace (model : unit -> 'a) (trace_in : trace option)
   let lp_acc    = ref AddrMap.empty in
 
   (* Recursive effect handler *)
+  (*A thunk is a function of type unit -> 'a 
+  The reason it exists is to delay computation 
+  until the effect handler is ready to handle it *)
+  
   let rec handle thunk =
     match thunk () with
     | v -> v  (* normal return *)

@@ -8,9 +8,6 @@ let normalize_weights (weights : float array) : float array =
   let total = Array.fold_left (+.) 0.0 weights in
   Array.map (fun w -> w /. total) weights
 
-(* =================================================== *)
-(* Resample handler for particle filter *)
-(* =================================================== *)
 
 let handle_resample thunk =
   let handler t =
@@ -25,9 +22,8 @@ let handle_resample thunk =
           else find_index (i + 1) (acc +. weights.(i))
         in
         let idx = find_index 0 0.0 in
-        (* Use Effect.Deep.continue with k directly *)
         Effect.Deep.continue k idx
-    | effect e, k -> Effect.Deep.continue k (Obj.magic e)  (* pass through other effects *)
+    | effect e, k -> Effect.Deep.continue k (Obj.magic e)
   in
   handler thunk
 
@@ -48,10 +44,6 @@ let propagate_particle (p : 'a particle) : 'a particle =
   { trace = tr;
     weight = exp (sum_lp lp);
     suspended_model = (fun () -> res) }
-
-(* =================================================== *)
-(* Sequential multinomial particle filter *)
-(* =================================================== *)
 
 let mult_pf
     ~(n_particles : int)

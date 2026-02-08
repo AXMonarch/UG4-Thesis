@@ -4,13 +4,20 @@ used to track the choices made during
    The 'trace' type stores these choices,
    representing the minimal state needed 
    to replay or propose new executions. *)
-
 type address = {
   tag   : string; 
   local : int;
 } (* Straight from ProbFX, tag and local pinpoint 
 the address that needs to be compared *)
 
+(*Distributions*)
+type distribution =
+  | Uniform of float * float
+  | Normal of float * float
+  | Categorical of float array
+  | Beta of float * float
+  | Bernoulli of float
+  | Binomial of int * float
 
 module AddrMap = Map.Make(struct
   type t = address
@@ -33,6 +40,7 @@ end)
 
 type trace = {
   choices : float AddrMap.t;
+  dists : distribution AddrMap.t;  (* track distribution at each address *)
 }
 
 (** Log probability trace - maps addresses to their log probabilities *)
@@ -46,14 +54,7 @@ Written to (when new address sampled)
 lp_trace is computed fresh every time by:
 Recording logProb(dist, value) at each Sample/Observe*)
 
-(*Distributions*)
-type distribution =
-  | Uniform of float * float
-  | Normal of float * float
-  | Categorical of float array
-  | Beta of float * float
-  | Bernoulli of float
-  | Binomial of int * float
+
 
 (* Sample effect: draws a value from a distribution and records it at the given address *)
 (* Produces a float result representing the sampled value *)
@@ -97,21 +98,26 @@ let make_addr (tag : string) (local : int) : address =
 let lookup (addr : address) (trace : trace) : float option =
   AddrMap.find_opt addr trace.choices
 
-(** Add or update a random choice in a trace *)
+(** Add or update a random choice in a trace (preserves existing dists) *)
 let add_choice (addr : address) (value : float) (trace : trace) : trace =
-  { choices = AddrMap.add addr value trace.choices }
+  { trace with choices = AddrMap.add addr value trace.choices }
+
+(** Add or update a random choice AND its distribution in a trace *)
+let add_choice_with_dist (addr : address) (value : float) (dist : distribution) (trace : trace) : trace =
+  { choices = AddrMap.add addr value trace.choices;
+    dists = AddrMap.add addr dist trace.dists }
 
 (** Create an empty trace *)
 let empty_trace () : trace =
-  { choices = AddrMap.empty }
+  { choices = AddrMap.empty; 
+    dists = AddrMap.empty }
 
-(** Get list of all addresses in a trace *)
 let addresses (trace : trace) : address list =
   AddrMap.fold (fun addr _ acc -> addr :: acc) trace.choices []
 
-(** ============================================
-    Distribution Module
-    ============================================ *)
+let get_dist (addr : address) (trace : trace) : distribution option =
+  AddrMap.find_opt addr trace.dists
+
 
 module Dist = struct
   (** Draw a sample from a distribution using a uniform random value *)
@@ -121,7 +127,6 @@ module Dist = struct
         a +. (u *. (b -. a))
     
     | Normal (mu, sigma) ->
-        (* Box-Muller transform *)
         let u1 = u in
         let u2 = Random.float 1.0 in
         let z = sqrt (-2.0 *. log u1) *. cos (2.0 *. Float.pi *. u2) in
@@ -139,7 +144,6 @@ module Dist = struct
         in
         find_category 0 0.0
       | Beta (a, b) ->
-        (* Simple Beta via Gamma trick (placeholder, OK for now) *)
         let ga = Random.float 1.0 ** (1.0 /. a) in
         let gb = Random.float 1.0 ** (1.0 /. b) in
         ga /. (ga +. gb)
@@ -156,7 +160,6 @@ module Dist = struct
         in
         float_of_int (loop n 0)
   
-  (** Compute log probability of a value under a distribution *)
   let log_prob (dist : distribution) (x : float) : float =
     match dist with
     | Uniform (a, b) ->

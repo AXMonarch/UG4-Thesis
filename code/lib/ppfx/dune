@@ -1,9 +1,5 @@
 (library
- (name ppfx_effects)
+ (name ppfx)
  (wrapped false)
- (modules effects runner ssmh model linreg hmm))
-
-(executable
- (name test)
- (modules test)
- (libraries ppfx_effects mtime mtime.clock.os))
+ (libraries ppfx_core ppfx_models ppfx_inference)
+ (modules))

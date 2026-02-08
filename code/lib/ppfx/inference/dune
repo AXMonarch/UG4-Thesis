@@ -1,0 +1,5 @@
+(library
+ (name ppfx_inference)
+ (wrapped false)
+ (modules mult_pf ssmh)
+ (libraries ppfx_core))

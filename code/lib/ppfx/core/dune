@@ -1,0 +1,5 @@
+(library
+ (name ppfx_core)
+ (wrapped false)
+ (modules effects runner)
+ (libraries))

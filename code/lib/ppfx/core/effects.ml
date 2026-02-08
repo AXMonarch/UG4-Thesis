@@ -84,9 +84,9 @@ type _ Effect.t +=
   | Resample : float array -> int Effect.t
 
 type 'a particle = {
-  trace : trace; 
+  trace : trace;
   weight : float;
-  suspended_model : unit -> 'a;
+  suspended_model : (unit -> 'a);
 }
 
 (** Create an address from a tag and local index *)

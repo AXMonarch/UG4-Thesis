@@ -1,0 +1,9 @@
+(executable
+ (name bench_ssmh)
+ (modules bench_ssmh)
+ (libraries ppfx_core ppfx_inference ppfx_models mtime mtime.clock.os))
+
+(executable
+ (name bench_mpf)
+ (modules bench_mpf)
+ (libraries ppfx_core ppfx_inference ppfx_models mtime mtime.clock.os))

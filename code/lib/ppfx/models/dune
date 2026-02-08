@@ -1,0 +1,5 @@
+(library
+ (name ppfx_models)
+ (wrapped false)
+ (modules hmm linreg)
+ (libraries ppfx_core))

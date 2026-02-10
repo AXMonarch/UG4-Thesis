@@ -27,10 +27,6 @@ let handle_resample thunk =
   in
   handler thunk
 
-(* =================================================== *)
-(* Particle filter utilities *)
-(* =================================================== *)
-
 let resample_particles (particles : 'a particle array) : 'a particle array =
   let weights = Array.map (fun p -> p.weight) particles in
   let norm_weights = normalize_weights weights in

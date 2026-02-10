@@ -2,7 +2,8 @@ open Linreg
 open Mult_pf
 open Hmm
 
-(* Particle Filter for LinReg *)
+
+(* ---------- LinReg ---------- *)
 
 let run_linreg_pf ~n_particles =
   Random.self_init ();
@@ -16,7 +17,7 @@ let benchmark_linreg_pf ~n_particles =
   Printf.printf "PF LinReg with %4d particles took %8.2f ms\n%!" n_particles ms
 
 
-(*  Particle Filter for HMM  *)
+(* ---------- HMM ---------- *)
 
 let run_hmm_pf ~n_particles =
   Random.self_init ();
@@ -29,8 +30,6 @@ let benchmark_hmm_pf ~n_particles =
   let ms = Mtime.Span.to_float_ns span /. 1_000_000. in
   Printf.printf "PF HMM    with %4d particles took %8.2f ms\n%!" n_particles ms
 
-
-(*  Loop over particle counts *)
 
 let () =
   let particle_counts =

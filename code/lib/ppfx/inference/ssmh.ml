@@ -80,6 +80,7 @@ let handle_propose_accept (f : unit -> (trace * lp_trace)) : trace * lp_trace =
     | effect (Accept ((trace, lp), (trace', lp'))), k ->
         let proposed_addr = !proposed_addr_ref in
         
+        (* CRITICAL FIX: Compute ratio excluding proposed_addr *)
         let ratio = 
           AddrMap.fold (fun addr logp_new acc ->
             match AddrMap.find_opt addr lp with

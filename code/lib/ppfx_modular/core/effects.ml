@@ -1,6 +1,3 @@
-open Types
-open Dist
-
 module type EffectsSig = sig
   type a
 

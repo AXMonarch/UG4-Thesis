@@ -7,6 +7,7 @@ module AddrMap : Map.S with type key = address
 
 type trace    = float AddrMap.t
 type lp_trace = float AddrMap.t
+val make_addr : string -> int -> address
 
 val empty_trace    : trace
 val lookup_trace   : address -> trace -> float option

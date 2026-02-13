@@ -1,5 +1,5 @@
 (library
- (name ppfx_modular_pf)
+ (name ppfx_modular_models)
  (wrapped false)
- (modules pf multpf advance)
+ (modules lin_regr)
  (libraries ppfx_modular_core))

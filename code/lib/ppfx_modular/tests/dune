@@ -1,0 +1,4 @@
+(executable
+ (name test_pf)
+ (modules test_pf)
+ (libraries ppfx_modular_core ppfx_modular_pf ppfx_modular_models))

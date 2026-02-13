@@ -34,3 +34,6 @@ let addresses (t : trace) : address list =
 
 let trace_size (t : trace) : int =
   AddrMap.cardinal t
+
+let make_addr (tag : string) (local : int) : address =
+  { tag; local }

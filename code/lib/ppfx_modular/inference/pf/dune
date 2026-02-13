@@ -1,0 +1,5 @@
+(library
+ (name ppfx_modular_pf)
+ (wrapped false)
+ (modules pf)
+ (libraries ppfx_modular_core))

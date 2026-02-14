@@ -1,13 +1,4 @@
-(* Fig 10: advance — shallow handler for particle stepping  *)
-(*                                                          *)
-(* advance :: LogP                                          *)
-(*         -> Handler Observe es a                          *)
-(*                    (Comp (Observe : es) a, LogP)         *)
-(*                                                          *)
-(* Val x case:           -> Finished                        *)
-(* Left (Observe d y) :  -> Stepped, capture continuation   *)
-(* Right op_es:          -> None, Sample falls through      *)
-
+(* advance.ml *)
 open Effects
 
 type 'a advance_result =
@@ -16,46 +7,38 @@ type 'a advance_result =
   | Finished of { value         : 'a
                 ; weight        : float }
 
-let advance (w : float) (p : float model) : float advance_result =
-  let rec handler : (float, float advance_result) Effect.Shallow.handler =
-    { retc = (fun (x : float) ->
-        (* Val x case from the paper                        *)
-        Finished { value = x; weight = w })
+module MakeAdvance (M : sig type a end) = struct
+  type a = M.a
 
-    ; exnc = (fun e -> raise e)
+  let advance (w : float) (p : a model) : a advance_result =
+    let rec handler : (a, a advance_result) Effect.Shallow.handler =
+      { retc = (fun (x : a) ->
+          Finished { value = x; weight = w })
+      ; exnc = (fun e -> raise e)
+      ; effc = fun (type c) (eff : c Effect.t) ->
+          match eff with
+          | FloatEffects.Observe { addr = _; dist; obs } ->
+              Some (fun (k : (c, a) Effect.Shallow.continuation) ->
+                let lp   = Dist.log_prob dist obs in
+                let next = fun () ->
+                  Effect.Shallow.continue_with k () handler
+                in
+                Stepped { next_particle = next
+                        ; weight        = w +. lp })
+          | _ -> None
+      }
+    in
+    Effect.Shallow.continue_with
+      (Effect.Shallow.fiber (fun (_ : unit) -> p ()))
+      ()
+      handler
 
-    ; effc = fun (type c) (eff : c Effect.t) ->
-        match eff with
-        | FloatEffects.Observe { addr = _; dist; obs } ->
-            (* Left (Observe d y) case from the paper       *)
-            (* capture k, next_particle resumes it later    *)
-            Some (fun (k : (c, float) Effect.Shallow.continuation) ->
-              let lp   = Dist.log_prob dist obs in
-              let next = fun () ->
-                Effect.Shallow.continue_with k () handler
-              in
-              Stepped { next_particle = next
-                      ; weight        = w +. lp })
-        | _ ->
-            (* Right op_es — Sample falls through           *)
-            (* to outer default_sample handler              *)
-            None
-    }
-  in
-  Effect.Shallow.continue_with
-    (Effect.Shallow.fiber (fun (_ : unit) -> p ()))
-    ()
-    handler
-
-(* Converts advance_result back into (float model * float) *)
-(* so pfilter's model_step type is satisfied               *)
-(* Finished -> trivial thunk, done' detects termination    *)
-(* Stepped  -> recursive thunk that keeps advancing        *)
-let rec to_particle (ar : float advance_result) : float model * float =
-  match ar with
-  | Finished { value; weight } ->
-      ((fun () -> value), weight)
-  | Stepped { next_particle; weight } ->
-      ((fun () ->
-          match to_particle (next_particle ()) with
-          | (p, _) -> p ()), weight)
+  let rec to_particle (ar : a advance_result) : a model * float =
+    match ar with
+    | Finished { value; weight } ->
+        ((fun () -> value), weight)
+    | Stepped { next_particle; weight } ->
+        ((fun () ->
+            match to_particle (next_particle ()) with
+            | (p, _) -> p ()), weight)
+end

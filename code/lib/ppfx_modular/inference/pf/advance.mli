@@ -1,5 +1,4 @@
-(* Fig 10: advance — shallow handler for particle stepping  *)
-
+(* advance.mli *)
 open Effects
 
 type 'a advance_result =
@@ -8,5 +7,8 @@ type 'a advance_result =
   | Finished of { value         : 'a
                 ; weight        : float }
 
-val advance     : float -> 'a model -> 'a advance_result
-val to_particle : 'a advance_result -> 'a model * float
+module MakeAdvance (M : sig type a end) : sig
+  type a = M.a
+  val advance     : float -> a model -> a advance_result
+  val to_particle : a advance_result -> a model * float
+end

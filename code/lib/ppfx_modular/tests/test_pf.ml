@@ -4,7 +4,7 @@
 (*   - weight distribution across particles                   *)
 (*   - effective sample size                                  *)
 
-open Effects
+
 open Lin_regr
 open Multpf
 

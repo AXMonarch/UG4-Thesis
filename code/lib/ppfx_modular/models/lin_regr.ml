@@ -19,7 +19,8 @@ let fresh_addr (counter : int ref) (tag : string) : address =
   make_addr tag local
 
 (* lin_regr x y : float model                                 *)
-(* returns (m, c) — slope and intercept                       *)
+(* returns (m, c) — slope and intercept, 
+these two determine the shape of the posterior               *)
 (* one Observe conditions on the data point (x, y)            *)
 let lin_regr (x : float) (y : float) : (float * float) model =
   fun () ->

@@ -1,10 +1,9 @@
-(* Fig 10: Inference Pattern: Particle Filter *)
 (* 
    Resample w a where
      Resample :: [(Model a, w)] -> Resample w [(Model a, w)]
 
    ModelStep w a = (Model a, w) -> IO (Model a, w)
-   -- IO drops in OCaml, randomness is direct
+   Drop the moadic style
 
    pfilter :: (Resample w ∈ fs, IO ∈ fs)
            => Int -> w -> ModelStep w a -> Model a 

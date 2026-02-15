@@ -1,4 +1,3 @@
-(* advance.ml *)
 open Effects
 
 type 'a advance_result =

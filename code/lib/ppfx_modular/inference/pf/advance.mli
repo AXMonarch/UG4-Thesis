@@ -1,4 +1,3 @@
-(* advance.mli *)
 open Effects
 
 type 'a advance_result =

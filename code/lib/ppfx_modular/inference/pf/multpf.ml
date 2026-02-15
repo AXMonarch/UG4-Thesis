@@ -1,17 +1,7 @@
-(* Fig 11: Pattern Instance: Multinomial Particle Filter    *)
-(*                                                          *)
-(* mulpfilter :: Int -> Model a -> IO [(a, LogP)]           *)
-(* mulpfilter n = runIO                                     *)
-(*             . handleResamplemul                          *)
-(*             . pfilter n 0 stepModelmul                   *)
-
 open Effects
 open Model_handlers
 open Pf
 
-(* -------------------------------------------------------- *)
-(* Weight arithmetic — Fig 11 auxiliaries                   *)
-(* -------------------------------------------------------- *)
 
 let normalise (log_ws : float list) : float list =
   let max_lw  = List.fold_left max neg_infinity log_ws in
@@ -39,11 +29,10 @@ let categorical (probs : float list) : int =
   in
   go 0 0.0 probs
 
-(* -------------------------------------------------------- *)
-(* Fig 11: mulpfilter — general over 'a                     *)
+
 (* Instantiates ParticleFilter and MakeAdvance locally      *)
 (* so both Resample and advance work for any a              *)
-(* -------------------------------------------------------- *)
+
 let mulpfilter (type a)
     (n     : int)
     (model : a model)
@@ -81,7 +70,5 @@ let mulpfilter (type a)
         in
         Effect.Deep.continue k resampled
   in
-  (* Fig 11: mulpfilter composition                         *)
-  (* handleResamplemul . pfilter n 0 stepModelmul           *)
   handle_resample (fun () ->
     PF.pfilter n 0.0 step model)

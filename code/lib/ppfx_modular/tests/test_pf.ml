@@ -21,9 +21,6 @@ let effective_sample_size (log_ws : float list) : float =
   let sum_w2  = List.fold_left (fun acc w -> acc +. w *. w) 0.0 ws in
   (sum_w *. sum_w) /. sum_w2
 
-(* ---------------------------------------------------------- *)
-(* Text visualiser helpers                                    *)
-(* ---------------------------------------------------------- *)
 
 (* bar : float -> int -> string                               *)
 (* draws a simple ascii bar proportional to value            *)
@@ -32,7 +29,6 @@ let bar (value : float) (max_width : int) : string =
   let n = max 0 (min n max_width) in
   String.make n '#'
 
-(* print_particles : (float * float) * float) list -> unit    *)
 let print_particles (results : ((float * float) * float) list) : unit =
   let n       = List.length results in
   let log_ws  = List.map snd results in
@@ -44,7 +40,6 @@ let print_particles (results : ((float * float) * float) list) : unit =
   Printf.printf "\n=== Particle Filter Results ===\n";
   Printf.printf "Particles: %d\n\n" n;
 
-  (* per-particle estimates *)
   Printf.printf "%-6s %-10s %-10s %-10s %s\n"
     "Idx" "m (slope)" "c (intcpt)" "weight" "rel. weight";
   Printf.printf "%s\n" (String.make 60 '-');
@@ -54,7 +49,6 @@ let print_particles (results : ((float * float) * float) list) : unit =
       i m c w_rel (bar w_rel 20)
   ) results;
 
-  (* summary statistics *)
   let ms    = List.map (fun ((m, _), _) -> m) results in
   let cs    = List.map (fun ((_, c), _) -> c) results in
   let mean xs =
@@ -73,14 +67,10 @@ let print_particles (results : ((float * float) * float) list) : unit =
   Printf.printf "ESS: %.2f / %d (%.1f%%)\n"
     ess n (100.0 *. ess /. float_of_int n);
   Printf.printf "%s\n" (String.make 60 '=')
-
-(* ---------------------------------------------------------- *)
-(* Run the test                                               *)
-(* ---------------------------------------------------------- *)
+  
 let () =
-  Random.self_init ();
+  Random.init 42;
 
-  (* single data point: x=1.0, true m=2.0, true c=1.0, y=3.0 *)
   let x = 1.0 in
   let y = 3.0 in
   let n_particles = 20 in

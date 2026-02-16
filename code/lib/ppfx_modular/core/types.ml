@@ -1,6 +1,3 @@
-(* Fig 7: Trace = Map Addr Double *)
-(* Fig 9: LPTrace = Map Addr LogP  *)
-
 type address = {
   tag   : string;
   local : int;
@@ -14,12 +11,16 @@ module AddrMap = Map.Make(struct
 end)
 
 type trace    = float AddrMap.t
-(* paper: type Trace = Map Addr Double        *)
-(* a map from addresses to raw uniform values *)
-
 type lp_trace = float AddrMap.t
-(* paper: type LPTrace = Map Addr LogP        *)
-(* a map from addresses to log probabilities  *)
+
+(* Extended with obs_idx to track observation progress      *)
+(* obs_idx threads what the paper threads through handler   *)
+(* state t in handleResamplermpf                            *)
+type pstate = {
+  log_weight : float;
+  trace      : trace;
+  obs_idx    : int;
+}
 
 let empty_trace : trace = AddrMap.empty
 
@@ -37,3 +38,9 @@ let trace_size (t : trace) : int =
 
 let make_addr (tag : string) (local : int) : address =
   { tag; local }
+
+let empty_pstate : pstate = {
+  log_weight = 0.0;
+  trace      = empty_trace;
+  obs_idx    = 0;
+}

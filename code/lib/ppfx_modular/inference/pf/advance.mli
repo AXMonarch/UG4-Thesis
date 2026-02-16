@@ -1,3 +1,6 @@
+(* Fig 10: advance — shallow handler for particle stepping  *)
+(* Fig 12: suspend_after — skip n observations then suspend *)
+
 open Effects
 
 type 'a advance_result =
@@ -8,6 +11,8 @@ type 'a advance_result =
 
 module MakeAdvance (M : sig type a end) : sig
   type a = M.a
-  val advance     : float -> a model -> a advance_result
-  val to_particle : a advance_result -> a model * float
+
+  val advance       : float -> a model -> a advance_result
+
+  val suspend_after : int -> float -> a model -> a advance_result
 end

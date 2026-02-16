@@ -12,8 +12,3 @@
  (name test_mpf_convergence)
  (modules test_mpf_convergence)
  (libraries ppfx_modular_core ppfx_modular_pf ppfx_modular_models))
-
-(executable
- (name debug_mpf)
- (modules debug_mpf debug_multpf)
- (libraries ppfx_modular_core ppfx_modular_pf ppfx_modular_models))

@@ -290,6 +290,24 @@ let exec_model : 'b. Trace.t -> (< sample : 'a. 'a Dist.t -> 'a;
     in
     (ans, w, tr')
 
+(* This exists so that we can use LPTrace on SSMH*)
+
+let exec_model_ssmh : 'b. Trace.t -> (< sample : 'a. 'a Dist.t -> 'a;
+                                         observe : 'c. 'c Dist.t -> 'c -> unit; .. > -> 'b)
+                      -> 'b * float * Trace.t
+  = fun tr0 model ->
+    let tr  = ref tr0 in
+    let w   = ref 0.  in
+    match model base_cap with
+    | ans -> (ans, !w, !tr)
+    | effect (Sample (d, addr)), k ->
+        let r = Trace.try_insert addr (Random.float 1.0) tr in
+        let x = Dist.draw r d in
+        w := !w +. Dist.log_prob x d;
+        Effect.Deep.continue k x
+    | effect (Observe (d, x, _)), k ->
+        w := !w +. Dist.log_prob x d;
+        Effect.Deep.continue k ()
 
 (* The abstract MH loop. Parametrized by exec which is
    the algorithm's policy for running the model.
@@ -384,7 +402,7 @@ let ssmh : 'b. int
                   observe : 'c. 'c Dist.t -> 'c -> unit; .. > -> 'b)
             -> ('b * float * Trace.t) list
   = fun n model ->
-    match mh n Trace.empty exec_model model with
+    match mh n Trace.empty exec_model_ssmh model with
     | chain -> chain
     | effect (Propose tr), k ->
         let addrs   = Trace.addresses tr in
@@ -417,16 +435,25 @@ let lin_regr : float -> float
 let () =
   Random.init 42;
   let x = 1.0 and y = 2.0 in
-  let n = 1000 in
+  let n = 10000 in
+  let burn_in = 1000 in
 
   Printf.printf "=== IM ===\n";
   let chain = im n (lin_regr x y) in
-  List.iter (fun (( m, c), w, _) ->
-    Printf.printf "m=%.3f c=%.3f w=%.3f\n" m c w
-  ) (List.filteri (fun i _ -> i mod 100 = 0) chain);
+  let samples = List.filteri (fun i _ -> i > burn_in) chain in
+  let n_samples = List.length samples in
+  let mean_m = List.fold_left (fun acc ((m, _), _, _) -> acc +. m) 0. samples /. float_of_int n_samples in
+  let mean_c = List.fold_left (fun acc ((_, c), _, _) -> acc +. c) 0. samples /. float_of_int n_samples in
+  Printf.printf "E[m]   = %.3f\n" mean_m;
+  Printf.printf "E[c]   = %.3f\n" mean_c;
+  Printf.printf "E[m+c] = %.3f\n" (mean_m +. mean_c);
 
-  Printf.printf "=== SSMH ===\n";
+  Printf.printf "\n=== SSMH ===\n";
   let chain = ssmh n (lin_regr x y) in
-  List.iter (fun ((m, c), w, _) ->
-    Printf.printf "m=%.3f c=%.3f w=%.3f\n" m c w
-  ) (List.filteri (fun i _ -> i mod 100 = 0) chain)
+  let samples = List.filteri (fun i _ -> i > burn_in) chain in
+  let n_samples = List.length samples in
+  let mean_m = List.fold_left (fun acc ((m, _), _, _) -> acc +. m) 0. samples /. float_of_int n_samples in
+  let mean_c = List.fold_left (fun acc ((_, c), _, _) -> acc +. c) 0. samples /. float_of_int n_samples in
+  Printf.printf "E[m]   = %.3f\n" mean_m;
+  Printf.printf "E[c]   = %.3f\n" mean_c;
+  Printf.printf "E[m+c] = %.3f\n" (mean_m +. mean_c)

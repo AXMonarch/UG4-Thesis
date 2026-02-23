@@ -1,0 +1,5 @@
+(library
+ (name ppfx_cps_models)
+ (wrapped false)
+ (modules lin_regr)
+ (libraries ppfx_cps_core))

@@ -40,10 +40,10 @@ let lin_regr_multi (xs : float list) (ys : float list) : (float * float) model =
               ; dist = Dist.Uniform (1.0, 3.0) }) in
     (* Observe each data point *)
     List.iter2 (fun x y ->
-      Effect.perform (FloatEffects.Observe
+      ignore(Effect.perform (FloatEffects.Observe
                 { addr = fresh_addr counter "obs"
                 ; dist = Dist.Normal (m *. x +. c, sigma)
-                ; obs  = y })
+                ; obs  = y }))
     ) xs ys;
     (m, c)
 

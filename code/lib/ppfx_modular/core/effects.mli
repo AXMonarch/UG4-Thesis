@@ -12,7 +12,7 @@ module type EffectsSig = sig
     | Observe : { addr : Types.address
                 ; dist : Dist.t
                 ; obs  : a
-                } -> unit Effect.t
+                } -> a Effect.t
 end
 
 module FloatEffects : EffectsSig with type a = float

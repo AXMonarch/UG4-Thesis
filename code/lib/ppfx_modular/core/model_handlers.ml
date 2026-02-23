@@ -18,8 +18,8 @@ open Types
 let default_observe (thunk : unit -> 'a) : 'a =
   match thunk () with
   | v -> v
-  | effect (FloatEffects.Observe { obs = _; _ }), k ->
-      Effect.Deep.continue k ()
+  | effect (FloatEffects.Observe { obs; _ }), k->
+      Effect.Deep.continue k obs
 
 
 (* defaultSample :: IO ∈ es => Handler Sample es a a        *)
@@ -77,8 +77,8 @@ let trace_lp (thunk : unit -> 'a) : unit -> 'a * lp_trace =
           Effect.Deep.continue k value
       | effect (FloatEffects.Observe { addr; dist; obs }), k ->
           (* record log prob, rethrow for outer handler    *)
-          Effect.perform (FloatEffects.Observe { addr; dist; obs });
+          ignore(Effect.perform (FloatEffects.Observe { addr; dist; obs })); 
           lp_acc := AddrMap.add addr (Dist.log_prob dist obs) !lp_acc;
-          Effect.Deep.continue k ()
+          Effect.Deep.continue k obs
     in
     (result, !lp_acc)

@@ -1,0 +1,5 @@
+(library
+ (name ppfx_cps_core)
+ (wrapped false)
+ (modules addr dist effects trace)
+ (libraries))

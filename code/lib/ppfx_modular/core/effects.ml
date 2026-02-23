@@ -10,7 +10,7 @@ module type EffectsSig = sig
     | Observe : { addr : Types.address
                 ; dist : Dist.t
                 ; obs  : a
-                } -> unit Effect.t
+                } -> a Effect.t
 end
 
 module FloatEffects : EffectsSig with type a = float = struct
@@ -25,7 +25,7 @@ module FloatEffects : EffectsSig with type a = float = struct
     | Observe : { addr : Types.address
                 ; dist : Dist.t
                 ; obs  : float
-                } -> unit Effect.t
+                } -> float Effect.t
 end
 
 type 'a model = unit -> 'a

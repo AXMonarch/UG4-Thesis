@@ -1,0 +1,5 @@
+(library
+ (name ppfx_cps_inference)
+ (wrapped false)
+ (modules mh)
+ (libraries ppfx_cps_core))

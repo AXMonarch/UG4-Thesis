@@ -31,8 +31,8 @@ let lin_regr (x : float) (y : float) : (float * float) model =
     let c = Effect.perform (FloatEffects.Sample
               { addr = fresh_addr counter "c"
               ; dist = Dist.Normal (0.0, 2.0) }) in
-    Effect.perform (FloatEffects.Observe
+    ignore(Effect.perform (FloatEffects.Observe
               { addr = fresh_addr counter "obs"
               ; dist = Dist.Normal (m *. x +. c, 1.0)
-              ; obs  = y });
+              ; obs  = y }));
     (m, c)

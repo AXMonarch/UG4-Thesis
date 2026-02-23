@@ -30,9 +30,6 @@ let categorical (probs : float list) : int =
   in
   go 0 0.0 probs
 
-(* -------------------------------------------------------- *)
-(* Fig 11: mulpfilter with w = pstate                       *)
-(* -------------------------------------------------------- *)
 let mulpfilter (type a)
     (n     : int)
     (model : a model)
@@ -44,36 +41,21 @@ let mulpfilter (type a)
   let module Adv = MakeAdvance(struct
     type nonrec a = a
   end) in
-  (* Fig 11: step_model_mul                                 *)
-  (* replays model using reuse_trace + suspend_after        *)
-  (* each step is fresh — no continuation aliasing          *)
-  (* Sample effects handled by default_sample               *)
   let step ((p, ps) : a model * pstate) : a model * pstate =
-    ignore p;
-    (* replay model from beginning using stored trace       *)
-    (* skip first ps.obs_idx observations                   *)
-    (* suspend at observation ps.obs_idx + 1                *)
     let (ar, new_trace) =
       reuse_trace ps.trace (fun () ->
         default_sample (fun () ->
-          Adv.suspend_after ps.obs_idx ps.log_weight model))
+          Adv.advance ps.log_weight p))
     in
     match ar with
     | Finished { value; weight } ->
-        (* particle done — wrap as trivial thunk            *)
         ((fun () -> value),
-         { log_weight = weight
-         ; trace      = new_trace
-         ; obs_idx    = ps.obs_idx })
-    | Stepped { next_particle = _; weight } ->
-    (* return original model — done' will run it           *)
-    (* it will perform effects, done' returns None         *)
-        (model,
-        { log_weight = weight
-        ; trace      = new_trace
-        ; obs_idx    = ps.obs_idx + 1 })
+         { ps with log_weight = weight; trace = new_trace })
+    | Stepped { next_particle; weight } ->
+        (next_particle,
+         {log_weight = weight; trace = new_trace;
+                   obs_idx = ps.obs_idx + 1 })
   in
-  (* Fig 11: handle_resample_mul                            *)
   let handle_resample thunk =
     match thunk () with
     | v -> v
@@ -93,8 +75,6 @@ let mulpfilter (type a)
         in
         Effect.Deep.continue k resampled
   in
-  (* Fig 11: mulpfilter composition                         *)
-  (* extract log_weight from pstate for final result        *)
   let raw = handle_resample (fun () ->
     PF.pfilter n empty_pstate step model)
   in

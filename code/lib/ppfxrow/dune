@@ -1,4 +1,19 @@
 (executable
- (public_name mh)
- (name mh)
- (libraries))
+ (public_name mh_test)
+ (name mh_test)
+ (libraries mh mtime.clock.os))
+
+(executable
+ (public_name mh_bench)
+ (name mh_bench)
+ (libraries mh mtime.clock.os))
+
+(executable
+ (public_name pf_test)
+ (name pf_test)
+ (libraries mh mtime.clock.os))
+
+(executable
+ (public_name pf_bench)
+ (name pf_bench)
+ (libraries mh mtime.clock.os))

@@ -50,6 +50,12 @@ let time_pmh n_mhsteps n_particles model =
   let elapsed_span = Mtime_clock.count counter in
   Mtime.Span.to_float_ns elapsed_span /. 1_000_000.
 
+let time_rmpf n_particles n_mhsteps model =
+  let counter = Mtime_clock.counter () in
+  let _ = rmpf n_particles n_mhsteps model in
+  let elapsed_span = Mtime_clock.count counter in
+  Mtime.Span.to_float_ns elapsed_span /. 1_000_000.
+
 let () =
   Random.init 42;
   let m_true = 2.0 and c_true = 1.0 in
@@ -63,6 +69,17 @@ let () =
   ) xs_fixed in
   let exp1_mpf_results = List.map (fun n ->
     let elapsed = time_mpf n (lin_regr_full xs_fixed ys_fixed) in
+    Printf.printf "%-6d %10.2f\n" n elapsed;
+    (n, elapsed)
+  ) (List.init 10 (fun i -> (i + 1) * 50)) in
+
+  Printf.printf "\n";
+
+  Printf.printf "=== Experiment 1: RMPF Varying Particles (LinReg 50 obs, 1 MH step) ===\n";
+  Printf.printf "%-6s %10s\n" "n" "time(ms)";
+  let n_mhsteps_rmpf = 1 in
+  let exp1_rmpf_results = List.map (fun n ->
+    let elapsed = time_rmpf n n_mhsteps_rmpf (lin_regr_full xs_fixed ys_fixed) in
     Printf.printf "%-6d %10.2f\n" n elapsed;
     (n, elapsed)
   ) (List.init 10 (fun i -> (i + 1) * 50)) in
@@ -86,6 +103,16 @@ let () =
   let ys_hmm_fixed = simulate_hmm 50 0 0.2 0.9 in
   let exp1_mpf_hmm_results = List.map (fun n ->
     let elapsed = time_mpf n (hmm_model 50 0 ys_hmm_fixed) in
+    Printf.printf "%-6d %10.2f\n" n elapsed;
+    (n, elapsed)
+  ) (List.init 10 (fun i -> (i + 1) * 50)) in
+
+  Printf.printf "\n";
+
+  Printf.printf "=== Experiment 1: RMPF Varying Particles (HMM 50 nodes, 1 MH step) ===\n";
+  Printf.printf "%-6s %10s\n" "n" "time(ms)";
+  let exp1_rmpf_hmm_results = List.map (fun n ->
+    let elapsed = time_rmpf n n_mhsteps_rmpf (hmm_model 50 0 ys_hmm_fixed) in
     Printf.printf "%-6d %10.2f\n" n elapsed;
     (n, elapsed)
   ) (List.init 10 (fun i -> (i + 1) * 50)) in
@@ -118,6 +145,20 @@ let () =
 
   Printf.printf "\n";
 
+  Printf.printf "=== Experiment 2: RMPF Varying Model Size (100 particles, 1 MH step) ===\n";
+  Printf.printf "%-6s %10s\n" "size" "time(ms)";
+  let exp2_rmpf_results = List.map (fun size ->
+    let xs = List.init size (fun i -> float_of_int i /. float_of_int size *. 4.0 -. 2.0) in
+    let ys = List.map (fun x ->
+      m_true *. x +. c_true +. (Random.float 2.0 -. 1.0)
+    ) xs in
+    let elapsed = time_rmpf n_mpf_fixed n_mhsteps_rmpf (lin_regr_full xs ys) in
+    Printf.printf "%-6d %10.2f\n" size elapsed;
+    (size, elapsed)
+  ) (List.init 10 (fun i -> (i + 1) * 50)) in
+
+  Printf.printf "\n";
+
   Printf.printf "=== Experiment 2: PMH Varying Model Size (50 steps, 10 particles) ===\n";
   Printf.printf "%-6s %10s\n" "size" "time(ms)";
   let exp2_pmh_results = List.map (fun size ->
@@ -144,6 +185,17 @@ let () =
 
   Printf.printf "\n";
 
+  Printf.printf "=== Experiment 2: RMPF Varying Model Size HMM (100 particles, 1 MH step) ===\n";
+  Printf.printf "%-6s %10s\n" "size" "time(ms)";
+  let exp2_rmpf_hmm_results = List.map (fun size ->
+    let ys = simulate_hmm size 0 0.2 0.9 in
+    let elapsed = time_rmpf n_mpf_fixed n_mhsteps_rmpf (hmm_model size 0 ys) in
+    Printf.printf "%-6d %10.2f\n" size elapsed;
+    (size, elapsed)
+  ) (List.init 10 (fun i -> (i + 1) * 50)) in
+
+  Printf.printf "\n";
+
   Printf.printf "=== Experiment 2: PMH Varying Model Size HMM (50 steps, 10 particles) ===\n";
   Printf.printf "%-6s %10s\n" "size" "time(ms)";
   let exp2_pmh_hmm_results = List.map (fun size ->
@@ -162,10 +214,14 @@ let () =
     (String.concat "," (List.map (fun (n, _) -> string_of_int n) exp1_mpf_results));
   Printf.fprintf csv_file "MPF-[ ]-LinRegr-50,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_mpf_results));
+  Printf.fprintf csv_file "RMPF-1-LinRegr-50,%s\n"
+    (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_rmpf_results));
   Printf.fprintf csv_file "PMH-[ ]-LinRegr-50,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_pmh_results));
   Printf.fprintf csv_file "MPF-[ ]-HidMark-50,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_mpf_hmm_results));
+  Printf.fprintf csv_file "RMPF-1-HidMark-50,%s\n"
+    (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_rmpf_hmm_results));
   Printf.fprintf csv_file "PMH-[ ]-HidMark-50,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp1_pmh_hmm_results));
 
@@ -175,6 +231,8 @@ let () =
     (String.concat "," (List.map (fun (s, _) -> string_of_int s) exp2_mpf_results));
   Printf.fprintf csv_file "LinRegr-[ ]-MPF-100,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_mpf_results));
+  Printf.fprintf csv_file "LinRegr-1-RMPF-100,%s\n"
+    (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_rmpf_results));
   Printf.fprintf csv_file "LinRegr-[ ]-PMH-50-10,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_pmh_results));
 
@@ -184,6 +242,8 @@ let () =
     (String.concat "," (List.map (fun (s, _) -> string_of_int s) exp2_mpf_hmm_results));
   Printf.fprintf csv_file "HidMark-[ ]-MPF-100,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_mpf_hmm_results));
+  Printf.fprintf csv_file "HidMark-1-RMPF-100,%s\n"
+    (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_rmpf_hmm_results));
   Printf.fprintf csv_file "HidMark-[ ]-PMH-50-10,%s\n"
     (String.concat "," (List.map (fun (_, t) -> string_of_float (t /. 1000.)) exp2_pmh_hmm_results));
 

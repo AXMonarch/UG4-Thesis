@@ -87,7 +87,7 @@ let () =
   Random.init 42;
 
   let n_particles = 100  in
-  (* let n_mhsteps   = 5    in *)
+  let n_mhsteps   = 5    in
   let burn_in     = 100  in
   let n_pmh       = 1000 in
 
@@ -99,8 +99,8 @@ let () =
   let (mean_m, mean_c) = pf_posterior_mean (mpf n_particles (lin_regr_full xs ys)) in
   Printf.printf "MPF:  E[m]=%.3f (true=2.0) E[c]=%.3f (true=1.0)\n" mean_m mean_c;
 
-  (* let (mean_m, mean_c) = pf_posterior_mean (rmpf n_particles n_mhsteps (lin_regr_full xs ys)) in
-  Printf.printf "RMPF: E[m]=%.3f (true=2.0) E[c]=%.3f (true=1.0)\n" mean_m mean_c; *)
+  let (mean_m, mean_c) = pf_posterior_mean (rmpf n_particles n_mhsteps (lin_regr_full xs ys)) in
+  Printf.printf "RMPF: E[m]=%.3f (true=2.0) E[c]=%.3f (true=1.0)\n" mean_m mean_c;
 
   let (mean_m, mean_c) = pmh_posterior_mean (pmh n_pmh n_particles (lin_regr_full xs ys)) burn_in in
   Printf.printf "PMH:  E[m]=%.3f (true=2.0) E[c]=%.3f (true=1.0)\n\n" mean_m mean_c;
@@ -112,8 +112,8 @@ let () =
   let (mean_t, mean_o) = pf_hmm_posterior_mean (mpf n_particles (hmm 20 0 ys_hmm)) in
   Printf.printf "MPF:  E[trans_p]=%.3f (true=0.2) E[obs_p]=%.3f (true=0.9)\n" mean_t mean_o;
 
-  (* let (mean_t, mean_o) = pf_hmm_posterior_mean (rmpf n_particles n_mhsteps (hmm 20 0 ys_hmm)) in
-  Printf.printf "RMPF: E[trans_p]=%.3f (true=0.2) E[obs_p]=%.3f (true=0.9)\n" mean_t mean_o; *)
+  let (mean_t, mean_o) = pf_hmm_posterior_mean (rmpf n_particles n_mhsteps (hmm 20 0 ys_hmm)) in
+  Printf.printf "RMPF: E[trans_p]=%.3f (true=0.2) E[obs_p]=%.3f (true=0.9)\n" mean_t mean_o;
 
   let (mean_t, mean_o) = pmh_hmm_posterior_mean (pmh n_pmh n_particles (hmm 20 0 ys_hmm)) burn_in in
   Printf.printf "PMH:  E[trans_p]=%.3f (true=0.2) E[obs_p]=%.3f (true=0.9)\n" mean_t mean_o

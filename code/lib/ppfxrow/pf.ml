@@ -158,7 +158,7 @@ let mpf : 'b. int
         let resampled = resample ps in
         Effect.Deep.continue k resampled
 
-(* let rmpf : 'b. int
+let rmpf : 'b. int
            -> int
            -> (< sample : 'a. 'a Dist.t -> 'a;
                  observe : 'a. 'a Dist.t -> 'a -> unit; .. > -> 'b)
@@ -166,17 +166,30 @@ let mpf : 'b. int
   = fun n_particles n_mhsteps model ->
     match pf n_particles Trace.empty model with
     | particles -> particles
-    | effect (Resample (ps : 'b particle list)), k ->
-        let resampled : 'b particle list = resample ps in
-        let moved : 'b particle list = List.map (fun p ->
+    | effect (Resample ps), k ->
+        let resampled = resample ps in
+        let moved = List.map (fun p ->
           match p.result with
           | Finished _ -> p
           | Stepped s ->
-              let chain = mh n_mhsteps s.trace exec_model model in
+              let chain =
+                match mh n_mhsteps s.trace exec_model model with
+                | c -> c
+                | effect (Propose tr), k ->
+                    let addrs = Trace.addresses tr in
+                    let n_addrs = List.length addrs in
+                    if n_addrs = 0 then Effect.Deep.continue k tr
+                    else
+                      let addr = List.nth addrs (Random.int n_addrs) in
+                      Effect.Deep.continue k (Trace.AddrMap.remove addr tr)
+                | effect (Accept (w, w', n, n')), k ->
+                    let ratio = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
+                    Effect.Deep.continue k (ratio >= Random.float 1.0)
+              in
               let (_, _, improved_trace) = List.hd chain in
-              { p with result = advance improved_trace model }
+              { p with result = Stepped { s with trace = improved_trace } }
         ) resampled in
-        Effect.Deep.continue k moved *)
+        Effect.Deep.continue k moved
 
 (* Hybrid Model : PMH *)
 

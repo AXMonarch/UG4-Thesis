@@ -17,3 +17,8 @@
  (public_name pf_bench)
  (name pf_bench)
  (libraries mh mtime.clock.os))
+
+(executable
+ (public_name mhcaps)
+ (name mhcaps)
+ (libraries mh mtime.clock.os))

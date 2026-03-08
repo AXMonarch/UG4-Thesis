@@ -75,18 +75,32 @@ module Dist = struct
             2.83297682 +. p *. w
         in
         p *. x
+    
+    let lcg_next (n : int) : int =
+    (1664525 * n + 1013904223) mod 2147483647
+
+    let lcg_expand (r : float) (k : int) : float array =
+      let seed = int_of_float (r *. 1e16) mod 2147483647 in
+      let rs = Array.make k 0. in
+      let cur = ref (lcg_next seed) in
+      for i = 0 to k - 1 do
+        rs.(i) <- float_of_int !cur /. 2147483647.;
+        cur := lcg_next !cur
+      done;
+      rs
 
     let sqrt_2    = Float.sqrt 2.
     let sqrt_2_pi = Float.sqrt (2. *. Float.pi)
   end
 
   type 'a t =
-    | Bernoulli : float            -> bool t
-    | Normal    : float * float    -> float t
-    | Uniform   : float * float    -> float t
-    | Beta      : float * float    -> float t
-    | Binomial  : int * float      -> int t
+    | Bernoulli :   float            -> bool t
+    | Normal    :   float * float    -> float t
+    | Uniform   :   float * float    -> float t
+    | Beta      :   float * float    -> float t
+    | Binomial  :   int * float      -> int t
     | Categorical : float array    -> int t
+    | Dirichlet  :   float array    -> float array t
 
   let bernoulli : float -> bool t
     = fun p ->
@@ -116,6 +130,12 @@ module Dist = struct
   let categorical : float array -> int t
     = fun probs ->
     Categorical probs
+  
+  let dirichlet : float array -> float array t
+  = fun alphas ->
+    assert (Array.length alphas >= 2);
+    assert (Array.for_all (fun a -> a > 0.) alphas);
+    Dirichlet alphas
 
   let draw : type a. float -> a t -> a
     = fun r d ->
@@ -145,6 +165,12 @@ module Dist = struct
             else go (i + 1) cumsum'
         in
         go 0 0.0
+    | Dirichlet alphas ->
+        let k = Array.length alphas in
+        let rs = Utils.lcg_expand r k in
+        let xs = Array.map2 (fun a ri -> ri ** (1.0 /. a)) alphas rs in
+        let total = Array.fold_left ( +. ) 0. xs in
+        Array.map (fun x -> x /. total) xs
 
   let log_prob : type a. a -> a t -> float
     = fun x d ->
@@ -172,6 +198,19 @@ module Dist = struct
         if x >= 0 && x < Array.length probs then
           log (probs.(x) /. total)
         else neg_infinity
+      | Dirichlet alphas ->
+          let log_gamma a =
+            if a <= 0. then neg_infinity
+            else (a -. 0.5) *. log a -. a +. 0.5 *. log (2. *. Float.pi)
+          in
+          let sum_a = Array.fold_left ( +. ) 0. alphas in
+          let n = Array.length alphas in
+          let lp = ref (log_gamma sum_a
+            -. Array.fold_left (fun acc a -> acc +. log_gamma a) 0. alphas) in
+          for i = 0 to n - 1 do
+            lp := !lp +. (alphas.(i) -. 1.) *. log x.(i)
+          done;
+          !lp
 
   end
 
@@ -199,6 +238,11 @@ type _ Effect.t +=
   | Observe : 'a Dist.t * 'a * Addr.t -> unit Effect.t
   | Propose : Trace.t -> Trace.t Effect.t
   | Accept  : float * float * int * int -> bool Effect.t
+
+(*sample bool and sample float*)
+(*Only 1 effect name, need more, make modules with
+different effects inside it.*)
+(*[@@ocaml.unboxed] for models *)
 
 (*Capabilty style passing with Objects in OCAML :
 

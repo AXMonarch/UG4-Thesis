@@ -1,6 +1,9 @@
 open Mh
 open Pf
 
+(* Load random numbers from file into memory before benchmarks *)
+let () = Rng.load "rng_sequence.txt"
+
 let lin_regr_full (xs : float list) (ys : float list)
     : < sample  : 'a. 'a Dist.t -> 'a;
         observe : 'b. 'b Dist.t -> 'b -> unit; .. >
@@ -32,9 +35,9 @@ let simulate_hmm (n : int) (x0 : int) (trans_p : float) (obs_p : float) : int ar
   let x  = ref x0 in
   let ys = Array.make n 0 in
   for i = 0 to n - 1 do
-    let dx = if Random.float 1.0 <= trans_p then 1 else 0 in
+    let dx = if Rng.next () <= trans_p then 1 else 0 in
     x := !x + dx;
-    ys.(i) <- Dist.draw (Random.float 1.0) (Dist.binomial !x obs_p)
+    ys.(i) <- Dist.draw (Rng.next ()) (Dist.binomial !x obs_p)
   done;
   ys
 

@@ -63,7 +63,7 @@ let advance : 'b. Trace.t
     match model base_cap with
     | x -> Finished { value = x; weight = 0.; trace = !tr }
     | effect (Sample (d, addr)), k ->
-        let r = Trace.try_insert addr (Random.float 1.0) tr in
+        let r = Trace.try_insert addr (Rng.next ()) tr in
         Effect.Deep.continue k (Dist.draw r d)
     | effect (Observe (d, x, _)), k ->
         let lp   = Dist.log_prob x d in
@@ -102,7 +102,7 @@ let resample : 'a particle list -> 'a particle list
     let probs = Array.map (fun w -> w /. total) weights in
     let particles_arr = Array.of_list particles in
     List.init n (fun _ ->
-      let r = Random.float 1.0 in
+      let r = Rng.next () in
       let rec pick i cumsum =
         if i >= n - 1 then i
         else
@@ -184,7 +184,7 @@ let rmpf : 'b. int
                       Effect.Deep.continue k (Trace.AddrMap.remove addr tr)
                 | effect (Accept (w, w', n, n')), k ->
                     let ratio = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
-                    Effect.Deep.continue k (ratio >= Random.float 1.0)
+                    Effect.Deep.continue k (ratio >= Rng.next ())
               in
               let (_, _, improved_trace) = List.hd chain in
               { p with result = Stepped { s with trace = improved_trace } }
@@ -233,5 +233,5 @@ let pmh : 'b. int
           Effect.Deep.continue k tr'
     | effect (Accept (w, w', n, n')), k ->
         let ratio  = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
-        let accept = ratio >= Random.float 1.0 in
+        let accept = ratio >= Rng.next () in
         Effect.Deep.continue k accept

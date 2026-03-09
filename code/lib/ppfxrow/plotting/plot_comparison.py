@@ -30,7 +30,7 @@ def read_csv_data(filename):
     
     return data
 
-def plot_comparison(ocaml_data, haskell_data, experiment_name, x_label, y_label, output_file):
+def plot_comparison(ocaml_data, haskell_data, x_label, y_label, output_file):
     """Create a comparison plot for OCaml vs Haskell."""
     fig, ax = plt.subplots(figsize=(10, 6))
     
@@ -42,7 +42,6 @@ def plot_comparison(ocaml_data, haskell_data, experiment_name, x_label, y_label,
     
     ax.set_xlabel(x_label, fontsize=12, fontweight='bold')
     ax.set_ylabel(y_label, fontsize=12, fontweight='bold')
-    ax.set_title(experiment_name, fontsize=14, fontweight='bold')
     ax.legend(fontsize=11, loc='best')
     ax.grid(True, alpha=0.3)
     
@@ -51,13 +50,12 @@ def plot_comparison(ocaml_data, haskell_data, experiment_name, x_label, y_label,
     print(f"Saved {output_file}")
     plt.close()
 
-def plot_fused_experiment(ocaml_data, haskell_data, model_keys, model_names, 
-                          experiment_title, x_label, y_label, output_file):
+def plot_fused_experiment(ocaml_data, haskell_data, model_keys, 
+                          x_label, y_label, output_file):
     """Create a fused plot with two subplots for both models."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    fig.suptitle(experiment_title, fontsize=14, fontweight='bold')
     
-    for idx, (model_key, model_name) in enumerate(zip(model_keys, model_names)):
+    for idx, model_key in enumerate(model_keys):
         ax = axes[idx]
         
         if model_key in ocaml_data and model_key in haskell_data:
@@ -71,7 +69,6 @@ def plot_fused_experiment(ocaml_data, haskell_data, model_keys, model_names,
             
         ax.set_xlabel(x_label, fontsize=11, fontweight='bold')
         ax.set_ylabel(y_label, fontsize=11, fontweight='bold')
-        ax.set_title(model_name, fontsize=12, fontweight='bold')
         ax.legend(fontsize=10, loc='best')
         ax.grid(True, alpha=0.3)
     
@@ -82,22 +79,21 @@ def plot_fused_experiment(ocaml_data, haskell_data, model_keys, model_names,
 
 def main():
     # Read data
-    ocaml_data = read_csv_data('ocaml_ssmh_benchmarks.csv')
+    ocaml_data = read_csv_data('ocaml_unified_benchmarks.csv')
     haskell_data = read_csv_data('benchmarks-prob-fx.csv')
     
     print("OCaml data keys:", list(ocaml_data.keys()))
     print("Haskell data keys:", list(haskell_data.keys()))
     
+    # SSMH Experiments
     # Experiment 1: Varying SSMH iterations (both LinReg and HMM with 50 observations/steps)
     plot_fused_experiment(
         ocaml_data,
         haskell_data,
         ['SSMH-[ ]-LinRegr-50', 'SSMH-[ ]-HidMark-50'],
-        ['Linear Regression (50 observations)', 'Hidden Markov Model (50 steps)'],
-        'Experiment 1: Varying SSMH Iterations',
         'Number of SSMH Steps',
         'Time (seconds)',
-        'experiment1_varying_iterations.png'
+        'ssmh_experiment1_varying_iterations.png'
     )
     
     # Experiment 2: Varying model size (both LinReg and HMM with 100 SSMH steps)
@@ -105,11 +101,72 @@ def main():
         ocaml_data,
         haskell_data,
         ['LinRegr-[ ]-SSMH-100', 'HidMark-[ ]-SSMH-100'],
-        ['Linear Regression (100 SSMH steps)', 'Hidden Markov Model (100 SSMH steps)'],
-        'Experiment 2: Varying Model Size',
         'Number of Observations/Time Steps',
         'Time (seconds)',
-        'experiment2_varying_model_size.png'
+        'ssmh_experiment2_varying_model_size.png'
+    )
+    
+    # MPF Experiments
+    # Experiment 1: Varying MPF particles (both LinReg and HMM with 50 observations/steps)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['MPF-[ ]-LinRegr-50', 'MPF-[ ]-HidMark-50'],
+        'Number of MPF Particles',
+        'Time (seconds)',
+        'mpf_experiment1_varying_iterations.png'
+    )
+    
+    # Experiment 2: Varying model size (both LinReg and HMM with 100 MPF particles)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['LinRegr-[ ]-MPF-100', 'HidMark-[ ]-MPF-100'],
+        'Number of Observations/Time Steps',
+        'Time (seconds)',
+        'mpf_experiment2_varying_model_size.png'
+    )
+    
+    # PMH Experiments
+    # Experiment 1: Varying PMH particles (both LinReg and HMM with 50 observations/steps)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['PMH-50-[ ]-LinRegr-50', 'PMH-50-[ ]-HidMark-50'],
+        'Number of PMH Particles',
+        'Time (seconds)',
+        'pmh_experiment1_varying_iterations.png'
+    )
+    
+    # Experiment 2: Varying model size (both LinReg and HMM with PMH 50 particles, 10 steps)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['LinRegr-[ ]-PMH-50-10', 'HidMark-[ ]-PMH-50-10'],
+        'Number of Observations/Time Steps',
+        'Time (seconds)',
+        'pmh_experiment2_varying_model_size.png'
+    )
+    
+    # RMPF Experiments
+    # Experiment 1: Varying RMPF MH steps (both LinReg and HMM with 50 observations/steps)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['RMPF-10-[ ]-LinRegr-50', 'RMPF-10-[ ]-HidMark-50'],
+        'Number of RMPF MH Steps',
+        'Time (seconds)',
+        'rmpf_experiment1_varying_iterations.png'
+    )
+    
+    # Experiment 2: Varying model size (both LinReg and HMM with RMPF 10 particles, 1 step)
+    plot_fused_experiment(
+        ocaml_data,
+        haskell_data,
+        ['LinRegr-[ ]-RMPF-10-1', 'HidMark-[ ]-RMPF-10-1'],
+        'Number of Observations/Time Steps',
+        'Time (seconds)',
+        'rmpf_experiment2_varying_model_size.png'
     )
     
     print("\nAll comparison plots generated successfully!")

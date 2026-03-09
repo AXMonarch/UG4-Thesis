@@ -1,3 +1,4 @@
+[@@@ocaml.warning "-27-32-39"]
 open Mh
 
 (* ---- Type container for functor arguments ---- *)

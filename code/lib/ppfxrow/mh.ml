@@ -147,12 +147,12 @@ module Dist = struct
         a +. r *. (b -. a)
     | Beta (a, b) ->
         let ga = r ** (1.0 /. a) in
-        let gb = Random.float 1.0 ** (1.0 /. b) in
+        let gb = Rng.next () ** (1.0 /. b) in
         ga /. (ga +. gb)
     | Binomial (n, p) ->
         let rec loop i acc =
           if i = 0 then acc
-          else loop (i - 1) (acc + (if Random.float 1.0 < p then 1 else 0))
+          else loop (i - 1) (acc + (if Rng.next () < p then 1 else 0))
         in
         loop n 0
     | Categorical probs ->
@@ -287,7 +287,7 @@ let reuse_trace : 'b. Trace.t -> (< sample : 'a. 'a Dist.t -> 'a; .. > -> 'b) ->
     match model base_cap with
     | ans -> (ans, !tr)
     | effect (Sample (d, addr)), k ->
-        let r = Trace.try_insert addr (Random.float 1.0) tr in
+        let r = Trace.try_insert addr (Rng.next ()) tr in
         Effect.Deep.continue k (Dist.draw r d)
 
 
@@ -405,10 +405,10 @@ let im : 'b. int
     match mh n Trace.empty exec_model model with
     | chain -> chain
     | effect (Propose tr), k ->
-        let tr' = Trace.AddrMap.map (fun _ -> Random.float 1.0) tr in
+        let tr' = Trace.AddrMap.map (fun _ -> Rng.next ()) tr in
         Effect.Deep.continue k tr'
     | effect (Accept (w, w', _, _)), k ->
-        let accept = exp (w' -. w) >= Random.float 1.0 in
+        let accept = exp (w' -. w) >= Rng.next () in
         Effect.Deep.continue k accept
 
 
@@ -440,7 +440,7 @@ let ssmh : 'b. int
           Effect.Deep.continue k tr'
     | effect (Accept (w, w', n, n')), k ->
         let ratio  = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
-        let accept = ratio >= Random.float 1.0 in
+        let accept = ratio >= Rng.next () in
         Effect.Deep.continue k accept
 
 (* ALGORITHM CODE DONE *)

@@ -1,24 +1,18 @@
-(* Pre-generated array of random numbers *)
 let numbers : float array ref = ref [||]
 let index : int ref = ref 0
 
-(* Initialize with a large array of random numbers *)
 let initialize (n : int) =
-  Random.init 42;  (* Fixed seed for reproducibility *)
+  Random.init 42;
   numbers := Array.init n (fun _ -> Random.float 1.0);
   index := 0
 
-(* Get the next random number from the array *)
 let next () =
   if !index >= Array.length !numbers then
-    failwith "Rng.next: sequence exhausted"
-  else begin
-    let r = !numbers.(!index) in
-    incr index;
-    r
-  end
+    index := 0;
+  let r = !numbers.(!index) in
+  incr index;
+  r
 
-(* Legacy functions for file-based approach (kept for compatibility) *)
 let load (path : string) =
   let ic = open_in path in
   let nums = ref [] in

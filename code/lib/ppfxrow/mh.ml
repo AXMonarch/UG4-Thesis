@@ -188,11 +188,16 @@ module Dist = struct
           (a -. 1.) *. log x +. (b -. 1.) *. log (1. -. x)
         else neg_infinity
     | Binomial (n, p) ->
-        let k = x in
-        if k < 0 || k > n then neg_infinity
-        else
-          float_of_int k *. log p
-          +. float_of_int (n - k) *. log (1. -. p)
+    let k = x in
+    if k < 0 || k > n then neg_infinity
+    else
+      let log_choose n k =
+        let rec log_fact n = if n <= 1 then 0. else log (float_of_int n) +. log_fact (n-1) in
+        log_fact n -. log_fact k -. log_fact (n - k)
+      in
+      log_choose n k
+      +. float_of_int k *. log p
+      +. float_of_int (n - k) *. log (1. -. p)
     | Categorical probs ->
         let total = Array.fold_left ( +. ) 0.0 probs in
         if x >= 0 && x < Array.length probs then
@@ -434,7 +439,7 @@ let ssmh : 'b. int
         let n_addrs = List.length addrs in
         if n_addrs = 0 then Effect.Deep.continue k tr
         else
-          let i    = Random.int n_addrs in
+          let i = int_of_float (Rng.next () *. float_of_int n_addrs) in
           let addr = List.nth addrs i in
           let tr'  = Trace.AddrMap.remove addr tr in
           Effect.Deep.continue k tr'

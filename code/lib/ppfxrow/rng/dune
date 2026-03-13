@@ -1,0 +1,4 @@
+(library
+ (name rng)
+ (wrapped false)
+ (modules rng rng_data))

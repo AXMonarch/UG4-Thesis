@@ -1,34 +1,41 @@
 (library
  (name ppfxrow)
  (wrapped false)
- (modules rng mh pf))
+ (modules mh pf mhcaps)
+ (libraries rng))
 
 (executable
  (public_name mh_test)
  (name mh_test)
  (modules mh_test)
- (libraries ppfxrow mtime.clock.os))
+ (libraries ppfxrow rng mtime.clock.os))
 
 (executable
  (public_name mh_bench)
  (name mh_bench)
  (modules mh_bench)
- (libraries ppfxrow mtime.clock.os))
+ (libraries ppfxrow rng mtime.clock.os))
 
 (executable
  (public_name pf_test)
  (name pf_test)
  (modules pf_test)
- (libraries ppfxrow mtime.clock.os))
+ (libraries ppfxrow rng mtime.clock.os))
 
 (executable
  (public_name pf_bench)
  (name pf_bench)
  (modules pf_bench)
- (libraries ppfxrow mtime.clock.os))
+ (libraries ppfxrow rng mtime.clock.os))
 
 (executable
- (public_name mhcaps)
- (name mhcaps)
- (modules mhcaps)
- (libraries ppfxrow mtime.clock.os))
+ (public_name mhcap_test)
+ (name mhcap_test)
+ (modules mhcap_test)
+ (libraries ppfxrow rng mtime.clock.os))
+
+(executable
+ (public_name cap_bench)
+ (name cap_bench)
+ (modules cap_bench)
+ (libraries ppfxrow rng mtime.clock.os))

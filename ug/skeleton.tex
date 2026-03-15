@@ -19,6 +19,8 @@
 % --- Colors & code formatting ---
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amsmath}
 
 % Define colors safely
 \definecolor{codebg}{rgb}{0.97,0.97,0.97}
@@ -43,7 +45,7 @@
 \begin{document}
 \begin{preliminary}
 
-\title{A Probabilistic Inference Engine Utilizing Effect Handlers}
+\title{ProbML: Probabilistic Inference with Native Algebraic Effects}
 
 \author{Arindam Bag}
 
@@ -106,32 +108,73 @@ Any acknowledgements go here.
 
 \chapter{Introduction}
 
+
+\textbf{FOR THIS DON'T SAY CHAPTER JUST INTRODUCE}
 This chapter introduces the motivation behind effect-based probabilistic programming and explains the rationale for modeling inference using algebraic effects and handlers. In addition, it outlines the objectives and contributions of the project and presents the structure of the report.
 
 \section{Motivation for Effects in Probabilistic Programming}
 
+\textbf{START WITH THE PROBLEM DESCRIPTION}
 Probabilistic programming languages (PPLs) provide a high-level abstraction for expressing statistical models while delegating inference to a general-purpose inference engine. This separation allows users to focus on model specification rather than algorithmic details. 
 
-Many inference algorithms such as Metropolis-Hastings, Particle Filters, and their hybrid variants can be viewed as different execution strategies over the same underlying probabilistic model. The algorithms perform the same fundamental probabilistic operations and target the same posterior distribution, differing only in how they explore it.
+Many inference algorithms such as Metropolis-Hastings, Particle Filters, and their hybrid variants can be viewed as different execution strategies over the same underlying probabilistic model. The algorithms perform the same fundamental probabilistic operations and target the same posterior distribution, differing only in how they explore it \citep{ProbFX}.
 
-In practice, the design of inference mechanisms in many PPLs tightly couples model execution with inference logic. For example, \textbf{Gen} requires models to be explicitly parameterized with execution structure, requiring the user to expose execution steps to support certain inference algorithms. \textbf{Pyro} requires a specialized method for each model to support sequential inference algorithms. Other languages such as \textbf{Anglican} use continuation-passing-style transformations to expose control over execution, but this control is obtained through global program rewriting instead of modular handlers, making inference logic harder to isolate and reuse.
-
-
-Meng et al. addresses this limitation by formulating probabilistic programming in terms of algebraic effects and handlers. Their system, \textbf{ProbFX}, expresses probabilistic operations such as sampling, observations, and resampling as effects, while inference algorithms are expressed as effect handlers. This formulation makes the separation between model and inference explicit. A single model definition can be interpreted by multiple inference handlers, each implementing a different strategy for exploring the posterior distribution without requiring any modification to the model itself.
-
-(PLACEHOLDER ASK DANIEL about scoping contributions)
-
-While ProbFX demonstrates the expressive power of algebraic effects for probabilistic inference, questions remain about how these ideas transfer across languages and how alternative effect-based designs impact modularity and performance.
+In practice, the design of inference mechanisms in many PPLs tightly couples model execution with inference logic. For example, \textit{Gen} requires models to be explicitly parameterized with execution structure, requiring the user to expose execution steps to support certain inference algorithms \citep{Gen}.
 
 
+\begin{lstlisting}[language=OCaml]
+@gen function model(x) 
+    {:z} ~ normal(0, 1) 
+    {:y} ~ normal(x, 1) 
+end 
+\end{lstlisting}
 
 
+\textit{Pyro} requires a specialized [\textbf{define inference method for each model using Python functions nd exception handling]} for each model to support sequential inference algorithms \citep{Pyro}. 
+
+\begin{lstlisting}[language=OCaml]
+def model(data): 
+    z = pyro.sample("z", dist.Normal(0., 1.)) 
+    pyro.sample("x", dist.Normal(z, 1.), obs=data) 
+
+def run_inference(data): 
+    svi = pyro.infer.SVI(model, guide, optim, loss) 
+    svi.step(data)
+\end{lstlisting}
+
+
+
+Other languages such as \textit{Anglican} use continuation-passing-style transformations to expose control over execution, but control is obtained through global program rewriting instead of modular handlers, making inference logic harder to isolate and reuse \citep{Anglican}.
+
+
+ProbFX addresses this limitation by formulating probabilistic programming in terms of algebraic effects and handlers \citep{ProbFX}. Their system, \textit{ProbFX}, expresses probabilistic operations such as sampling, observations, and resampling as effects, while inference algorithms are expressed as effect handlers. This formulation makes the separation between model and inference explicit. A single model definition can be interpreted by multiple inference algorithms, each implementing a different strategy for exploring the posterior distribution without requiring any modification to the model itself.
+
+
+ProbFX is implemented in Haskell using the extensible freer monad to reify effectful computations as explicit syntax trees. In this design, probabilistic models are represented as computation trees, and inference algorithms operate by interpreting these trees. 
+
+\begin{lstlisting}[language=OCaml]
+data Comp (es :: [Type →Type]) (a :: Type) where
+    Val :: a →Comp es a
+    Op :: EffectSum es b →(b →Comp es a)→Comp es a
+\end{lstlisting}
+
+
+
+While this approach demonstrates that probabilistic programming can be expressed modularly using effect handlers, it relies on a monadic encoding of effects and requires explicit interpretation of reified computations.
+
+ProbFX written in Haskell using the Extensible Freer Monad to store computations which could potentially be suspended or replayed. This paper explores the same functions written in OCaml's natively supported deep effects. 
 
 
 
 \section{Project Aims}
 
+\textbf{CHANGE, TOO VAGUE}
+The aim of this project is to implement a probabilistic programming library in OCaml that demonstrates the viability of capability-passing style for effect-based inference. We seek to show that decoupling model definitions from inference algorithms via algebraic effects and capability objects produces a clean, modular system that supports a range of inference algorithms including Metropolis-Hastings, Sequential Monte Carlo, and their hybrids
+
 \section{Project Contributions}
+
+\textbf{CHANGE, TOO VAGUE}
+ProbML, a probabilistic programming library implemented in OCaml using capability-passing style. We demonstrate that ProbML achieves inference performance consistently faster than ProbFX, the state-of-the-art Haskell-based system it is modelled after, with speedups of approximately 4-5x across standard benchmarks including Linear Regression, Hidden Markov Models, and Latent Dirichlet Allocation. We attribute this improvement to reduced allocation overhead, direct effect dispatch, and the avoidance of dictionary-passing inherent to Haskell's typeclass system.
 
 \section{Report Structure}
 
@@ -140,8 +183,6 @@ The remaining chapters are
 Background
 
 Implementation
-    - Section for Immutable Traces
-    - Section for Multicont
 
 Testing Suite
 
@@ -151,108 +192,574 @@ Conclusion and Future Work
 
 \chapter{Background}
 
-\section{Effects and Handlers}
+\section{Probabilistic Models and Inference}
 
-Effect handler-oriented programming is a programming paradigm that helps with the creation of composable code. Effects are able to extend exception handling by enabling continuation of a program halted by the detection of an exception. It is also possible to pass values to the program after the continuation. Keeping this in mind, you can implement multiple computational effects in code with this paradigm like logging, non-determinism, and state management.
+\subsection{The Posterior Distribution and Its Intractability}
 
-An effect is defined by its effect signature [Effects are interfaces], which defines the name of the effect in scope. It also specifies the type of the input and output of the effect. This serves as an instruction for the programmer when they design the handlers for these effects. 
+A probabilistic model is made up of latent and observable variables. Observable variables represent the data that we can measure, and they are often related to each other through the underlying structure of the model. Latent variables are unobserved quantities that explain the relationships between the observable variables.
 
-Handlers are implementations for a particular effect. Let us say you have an effect called \texttt{Crop} [CHANGE THIS TO ONE OF THE EFFECTS I WROTE BELOW]. There are multiple ways to crop an image, such as rectangular, free-form, and circular. Provided that you keep the types of handlers consistent with what has been defined in the effect signature, you will be able to implement any number of crop operations. 
+Before observing any data, we specify \textit{prior} distributions over the latent variables, encoding our initial assumptions about their possible values. We perform random \textit{sampling} operations on these distributions to obtain values for latent variables. We then perform an \textit{observe} operation to assess the \textit{likelihood} of the sampled latent variables explaining the relationships between the observable variables. This likelihood takes the form of a weight parameter: the higher the weight, the better the sample explains the observable relationships.
 
-These handlers enable a high degree of composabality because of continuations. You can pass a value to a continuation that can invoke another handler, and so on. This creates a modular and composable style of code built on Effect Handlers. 
+We are interested in how our beliefs about the latent variables change after observing data. The resulting distribution over the latent variables, conditioned on the observed data, is the \textit{posterior} distribution. The posterior combines the prior with the likelihood of the observations, representing an updated belief about which latent variable values best explain the observable variables.
 
-[Bit on Mathematical Foundations of Effects]
+Formally, Bayes’ rule defines the posterior. Given observed data $\mathbf{x}$ and latent variables $\mathbf{z}$, the posterior distribution is defined as
 
-[https://dhil.net/research/papers/thesis.pdf]
+\[
+p(\mathbf{z} \mid \mathbf{x}) = 
+\frac{p(\mathbf{x} \mid \mathbf{z}) \, p(\mathbf{z})}
+     {p(\mathbf{x})}.
+\]
 
-\section{Examples in Code}
+Here, $p(\mathbf{z})$ is the prior distribution over the latent variables, and $p(\mathbf{x} \mid \mathbf{z})$ is the likelihood, which corresponds to the weight assigned during observation. The denominator,
 
-This section will highlight some practical examples of effect handlers in code. 
+\[
+p(\mathbf{x}) = \int p(\mathbf{x} \mid \mathbf{z}) \, p(\mathbf{z}) \, d\mathbf{z},
+\]
 
-I have chosen to use OCaml to represent these examples, and to write the dissertation. OCaml has a rich effects system and is a functional language with strong pattern matching capabilities. Its support for effects and handlers provides a natural foundation for expressing probabilistic computations as composable and interpretable effects.
+is known as the \textit{evidence} or marginal likelihood. It ensures that the posterior distribution remains properly normalised.
 
-\subsection{Basic Components of an Effect Oriented Program}
+In most realistic models, computing the evidence requires integrating over all possible configurations of the latent variables. This integral is intractable, particularly when the model contains many latent variables or complex dependencies. Exact posterior inference is therefore computationally infeasible, and approximate inference algorithms become necessary.
 
+\subsection{Probabilistic Models}
 
-\subsubsection{{Handling the \texttt{Choose} Effect}}
+\textbf{MAYBE, add to Evaluation as params are fixed here?}
+The models implemented in this dissertation are from ProbFX's benchmarks \citep{ProbFX}. Translating the same models enables direct comparison between the original Haskell implementation and the OCaml translation.
 
-The \texttt{Choose} effect represents an operation where the program must select one value from a list of items. The actual choice depends on the effect handler, which determines the behavior of this effect.
+\subsubsection{Linear Regression}
+The linear regression model relates a list of input values $\mathbf{x}$ to a list of output values $\mathbf{y}$. 
+The latent variables are the slope $m$, intercept $c$, and noise standard deviation $s$, which receive Gaussian and uniform priors, respectively. 
+The observable variables are the outputs $y_i$, each observed under a Gaussian distribution centered at $m x_i + c$ with spread $s$.
 
-\subsubsection{Random Choice Handler}
+The exact generative model within this implementation is:
 
-This handler initializes the random number generator, captures the continuation \texttt{k}, and resumes execution with a randomly chosen element from the list.
+\[
+m \sim \text{Normal}(0, 3^2), \quad
+c \sim \text{Normal}(0, 5^2), \quad
+s \sim \text{Uniform}(1, 3)
+\]
+\[
+y_i \mid x_i, m, c, s \sim \text{Normal}(m x_i + c, s^2), \quad i = 1, \ldots, n.
+\]
 
+\subsubsection{Hidden Markov Model}
+The Hidden Markov Model (HMM) describes a sequence of latent states $x_0, \ldots, x_n$ evolving over time. 
+The latent variables are the transition probability $p_{\text{trans}}$ and the observation probability $p_{\text{obs}}$, both drawn from Beta priors. 
+The observable variables are the emissions $y_i$, each observed under a Binomial distribution parameterized by the current state and $p_{\text{obs}}$.
 
+The exact generative model within this implementation is:
+
+\[
+p_{\text{trans}} \sim \text{Beta}(2, 2), \quad
+p_{\text{obs}} \sim \text{Beta}(2, 2)
+\]
+\[
+x_0 \text{ given}, \quad
+x_i = x_{i-1} + d_i,\quad
+d_i \sim \text{Binomial}(p_{\text{trans}}), \quad i = 1,\ldots,n
+\]
+\[
+y_i \mid x_i, p_{\text{obs}} \sim \text{Binomial}(x_i, p_{\text{obs}}), \quad i = 1,\ldots,n.
+\]
+
+\subsubsection{Latent Dirichlet Allocation}
+Latent Dirichlet Allocation (LDA) models a document as a mixture of topics over a vocabulary. 
+The latent variables are the per-topic word distributions and the document-level topic proportions, both drawn from Dirichlet priors. 
+The observable variables are the words $w_i$, each observed under a Categorical distribution determined by the sampled topic assignment.
+
+The exact generative model within this implementation is:
+
+\[
+\boldsymbol{\phi}_k \sim \text{Dirichlet}(\mathbf{1}_4), \quad k = 1,\ldots,2
+\]
+\[
+\boldsymbol{\theta} \sim \text{Dirichlet}(\mathbf{1}_2)
+\]
+\[
+z_i \mid \boldsymbol{\theta} \sim \text{Categorical}(\boldsymbol{\theta}), \quad i = 1,\ldots,n_{\text{words}}
+\]
+\[
+w_i \mid z_i, \{\boldsymbol{\phi}_k\} \sim \text{Categorical}(\boldsymbol{\phi}_{z_i}), \quad i = 1,\ldots,n_{\text{words}}.
+\]
+
+\section{Effect Handler Oriented Programming}
+
+\subsection{Explaining Effects and Handlers}
+
+An \textit{effect} is an abstract representation of a computational operation whose concrete behaviour is defined separately \citep{Plotkin2003}. 
+In other words, an effect specifies the goal of a computation without prescribing how it executes. 
+This separation decouples the code of a computation from the details of how its operations are carried out, as the behaviour of effects is supplied later via handlers.
+
+Mathematically, an effect is a signature of algebraic operations. 
+For any evaluation context $E[\cdot]$, an operation symbol $\alpha$ commutes with evaluation:
+\[
+E[\alpha(M_1, \dots, M_n)] = \alpha(E[M_1], \dots, E[M_n])
+\]
+\citep{Plotkin2003}. 
+
+Sampling from a distribution is modelled as an algebraic effect in OCaml as follows:
 \begin{lstlisting}[language=OCaml]
-open Effect
-open Effect.Deep
-open Random
-
-type _ Effect.t += Choose : int list -> int Effect.t
-
-let handle_random f =
-  Random.self_init ();
-  match_with f ()
-  { retc = (fun v -> v);
-    exnc = (fun e -> raise e);
-    effc = (fun (type a) (eff : a t) ->
-      match eff with
-      | Choose lst ->
-          Some (fun (k : (a, _) continuation) ->
-            let idx = Random.int (List.length lst) in
-            let choice = List.nth lst idx in
-            continue k choice)
-      | _ -> None)
-  }
+type _ Effect.t += Sample : 'a Dist.t * Addr.t -> 'a Effect.t
 \end{lstlisting}
 
-\subsubsection{Deterministic Choice Handler}
+A \textit{handler} provides the concrete interpretation of an effect, defining how the program responds when an effect is performed and how computation continues afterwards \citep{Plotkin2009}. 
+Handlers capture the current continuation, manipulate it, and resume execution with new values or control logic. 
+This ability to separate effect definition from handling allows the same model to be interpreted in multiple ways: a Sample effect can be handled to produce a random draw or a deterministic choice depending on the use case, without modifying the code that performs the effect.
 
-Alternatively, we can define a deterministic handler that always selects the element at a specific index. This is useful for reproducibility or debugging.
+Mathematically, a handler is an interpretation rule $h$ that, for any evaluation context $E[\cdot]$, satisfies:
+\[
+h\bigl(E[\text{effect}(M_1, \dots, M_n)]\bigr)
+  = \text{concrete}\bigl(h(E[M_1]), \dots, h(E[M_n])\bigr)
+\]
+\citep{Plotkin2009}. 
 
+The following snippet illustrates how a handler interprets the Sample effect :
 \begin{lstlisting}[language=OCaml]
-let handle_indexed index f =
-  match_with f ()
-  { retc = (fun v -> v);
-    exnc = (fun e -> raise e);
-    effc = (fun (type a) (eff : a t) ->
-      match eff with
-      | Choose lst ->
-          Some (fun (k : (a, _) continuation) ->
-            if index < List.length lst then
-              continue k (List.nth lst index)
-            else failwith "Index out of range")
-      | _ -> None)
-  }
+ match m capability with
+      | ans -> ans
+      | effect S.Sample (d, addr), k ->
+          let r = Trace.try_insert addr (Rng.next ()) tr in
+          continue k (Dist.draw r d)
 \end{lstlisting}
 
-\subsubsection{Demonstration Program}
 
-We can now define a small program that performs the \texttt{Choose} effect twice and evaluates it under both handlers.
+\textit{Deep handlers} are 
+
+\section{Prior Work}
+
+
+\subsection{Implementing UNIX for Effect Handlers}
+
+Operating systems enable programs to declare effects like file I/O, process forking, and pipes, while handlers provide the full UNIX kernel implementation. Daniel Hillerström's thesis \citep{UNIXDHil} shows how effect handlers separate programs from their operating system.
+
+\subsection{Liberating Effects with Row Polymorphism}
+
+\subsection{Automatic Differentiation via Effects}
+
+Automatic differentiation is a family of algorithms that are used for optimized gradient calculations within data-intensive fields. Jesse Sigal's thesis \citep{AdBySigal} shows how effect handlers separate mathematical models from their gradient computation.
+
+
+
+
+
+\chapter{Implementation}
+
+\section{Overview}
+
+This chapter covers the implementation of the probabilistic programming language ProbFX \citep{ProbFX} in OCaml. We refer to this implementation as ProbML from now on. We go over the building blocks of a probabilistic programming language and how first-class effect handlers play a role in decoupling the model semantics from the inference engine. 
+
+\section{Defining a ProbML Model}
+
+For the first model, a coin is flipped and lands on heads or tails. It has one observed variable, the outcome of the flip, and one latent variable, the bias of the coin, \textit{P}. 
+
+We infer P's value using a series of observations, so we specify a prior distribution \textit{Beta(1,1)} over it. This expresses initial indifference over all existing biases. We sample an initial value for P from this prior. Then, we observe the outcome of a single flip, modelled as a \textit{Bernoulli(P)} random variable. \textbf{Clash between Binomial and Bernoulli resolve}
+
+To express these priors within ProbML, we introduce the \texttt{Dist} type, which is a Generalized Algebraic Data Type (GADT) that exposes both the distribution's parameters and its return type. This provides type safety for effects, as one cannot observe a float against a Binomial as its return type is int.
 
 \begin{lstlisting}[language=OCaml]
-let choose_demo () =
-  let x = perform (Choose [1; 2; 3]) in
-  let y = perform (Choose [10; 20; 30]) in
-  x + y
-
-let () =
-  Printf.printf "Random result: %d\n" (handle_random choose_demo);
-  Printf.printf "Indexed result: %d\n" (handle_indexed 0 choose_demo);
+module Dist = struct
+    type 'a t =
+        | Binomial :   int * float         -> int t
+        | Beta      :   float * float    -> float t
 \end{lstlisting}
 
-When run, the program produces different results depending on the chosen handler. The random handler generates variable results, while the indexed handler provides a single fixed result each time.
+We add two more functions to this module: \texttt{Draw} and \texttt{Log\_prob}
 
-\subsection{Prior Work}
+Draw takes a random value in the range [0,1) and transforms it into a sample from the given distribution. Log\_prob takes an observed value and returns its log-likelihood under the distribution, used during inference to score how well the current parameters explain the data. Both functions pattern match over all defined distributions, making the \texttt{Dist} type extensible.
 
-Automatic Differentiation via Effects and Handlers
-JESSE SIGAL
+\begin{lstlisting}[language=OCaml]
+let draw     : float -> 'a Dist.t -> 'a
+    match with
+    | Binomial ...
+    | Beta      ...
 
-HANDLING ALGEBRAIC EFFECTS
-GORDON D. PLOTKIN AND MATIJA PRETNAR
+    
+let log_prob : 'a    -> 'a Dist.t -> float
+    match with
+    | Binomial ...
+    | Beta      ...
 
 
-\subsection{Probability}
+\end{lstlisting}
+
+To perform further inference, we record the sampled value for P so that we may propose changes to it later. We introduce a \textit{trace}, a map from \textit{addresses} to sampled values. Each sample site in the model is assigned a unique integer address via a global incrementing counter, and the trace maps these addresses to the uniform random values drawn at each site. When P is sampled from \texttt{Beta(1,1)}, its drawn value is stored in the trace under its address, allowing algorithms to later retrieve it.
+
+\begin{lstlisting}[language=OCaml]
+module Trace = struct
+  module AddrMap = Map.Make(Int)
+  type t = float AddrMap.t
+end
+\end{lstlisting}
+
+In ProbML, we use effects to represent each operation for inference. A model requires a sample and an observe effect. The sample effect consumes a distribution, an address, and returns a value of the distribution's type. The observe effect consumes a distribution, an address, and the observed value, returning it unchanged to be used later.
+
+We define the effects for Sample and Observe in OCaml syntax below
+
+\begin{lstlisting}[language=OCaml]
+type _ Effect.t +=
+  | Sample  : 'a Dist.t * Addr.t -> 'a Effect.t
+  | Observe : 'a Dist.t * 'a * Addr.t -> a Effect.t
+\end{lstlisting}
+
+We can now write code for the coin-flip model in ProbML.
+
+\begin{lstlisting}[language=OCaml]
+let coin_flip =
+  let p = perform (Sample (Beta (1., 1.), addr)) in
+  let _ = perform (Observe (Binomial (1, p), addr, 1)) in
+  p
+\end{lstlisting}
+
+A model declares its intent by performing an effect, and a handler intercepts it and provides a concrete implementation.
+
+\section{ProbML Handlers and Capability Passing Style}
+
+\subsection{Constructing Capabilities}
+
+Before we write our handlers, we must redefine our effects to be monomorphic for type \textit{T}. Even though the previously defined effects are polymorphic, a single handler cannot simultaneously handle sampling from Binomial and Beta distributions within a model as the two of them have different return types of boolean and integer respectively. To resolve this, we create modules for the effects which use the functor pattern to create monomorphic effects as required by the model.
+
+\begin{lstlisting}[language=OCaml]
+module Sample = struct
+  module Make(T : R) = struct
+    type _ Effect.t += Sample : T.t Dist.t * Addr.t -> T.t Effect.t
+  end
+end
+
+module Observe = struct
+  module Make(T : R) = struct
+    type _ Effect.t += Observe : T.t Dist.t * Addr.t * T.t -> T.t Effect.t
+  end
+end
+\end{lstlisting}
+
+Another concern is tight coupling between the models and their specific effect constructors. If a model performs an effect directly as seen before, one could only run it using a handler that expects exactly that constructor. Swapping the inference algorithm would require changes to the model. 
+
+To resolve this, we introduce the notion of \textit{capabilities}. A capability is an object that provides a program access to resources. In capability-based systems, a program can only perform an action if it has been given the capability to do so. \citep{TamedCAML}.  We adopt this principle for ProbML: rather than performing effects directly, a model receives a capability object as its interface to the inference algorithm, through which it may sample from distributions and condition on observations. This separation ensures that the model and algorithm are loosely coupled.
+
+We define capability class types that declare exactly which operations a model requires. For our coin-flip model, we require the sample operation to draw from a Beta distribution over the bias p that returns a float and the observe operation to condition on an integer observation from a Binomial distribution. Each operation also takes an address used by the inference algorithm to track and replay individual random choices in the trace.
+
+\begin{lstlisting}[language=OCaml]
+class type sample_float_cap = object
+  method sample_float : float Dist.t -> Addr.t -> float
+end
+
+class type observe_int_cap = object
+  method observe_int : int Dist.t -> Addr.t -> int -> int
+end
+\end{lstlisting}
+
+Model specific capabilities are then created by inheriting the operation capabilities.
+
+\begin{lstlisting}[language=OCaml]
+class type coin_flip_cap = object
+  inherit sample_float_cap
+  inherit observe_int_cap
+end
+\end{lstlisting}
+
+We create a \texttt{Model} type which can be passed into handlers as a first class value. A model is a function from a capability object to a result. We also define a helper \texttt{run\_with\_capabilities} function that consumes the model and a capability object, returning a plain value to be intercepted by the handlers. 
+
+\begin{lstlisting}[language=OCaml]
+type ('c, 'a) model = Model of ((< .. > as 'c) -> 'a)
+
+let run_with_capabilities : (< .. > as 'c) -> ('c, 'a) model -> 'a
+  = fun caps (Model m) -> m caps
+\end{lstlisting}
+
+Finally, we can rewrite our coin-flip model by annotating the capability parameter with \texttt{\# coin\_flip\_cap}. The \# denotes an open object type for row polymorphism. It accepts any object that provides a subtype of \texttt{coin\_flip\_cap}. This allows the same model definition to accept capability objects constructed by different inference algorithms.
+
+\begin{lstlisting}[language=OCaml]
+let coin_flip (cap : #coin_flip_cap) =
+  let p = cap#sample_float (Dist.beta 1. 1.) (Addr.make ()) in
+  let _ = cap#observe_int (Dist.binomial 1 p) (Addr.make ()) 1 in
+  p
+\end{lstlisting}
+
+\subsection{Building a Composable Handler Stack} 
+
+A handler is a functor that, given a concrete type T, produces a module containing two things: a capability object that routes method calls to the appropriate effect constructor, and a \textit{run} function that wraps a model and can handle the objects created by those effect constructors.
+
+We write our first handler, \texttt{ReuseTrace} to intercept the sample effect. It replays a stored value from the trace or draws a fresh random value if no entry exists for that address.
+
+\begin{lstlisting}[language=OCaml]
+module ReuseTrace = struct
+  module Make(T : R) : ...
+    module S = Sample.Make(T)
+    let capability : a sample_capability = object
+      method sample d addr = perform (S.Sample (d, addr))
+    end
+    let run tr (Model m) =
+      match m capability with
+      | ans -> ans
+      | effect S.Sample (d, addr), k ->
+          let r = try_insert addr (Rng.next ()) tr in
+          continue k (draw r d)
+  end
+end
+\end{lstlisting}
+
+
+Similarly, \texttt{Likelihood} intercepts observe effects by accumulating log-probabilities into an accumulator \texttt{w} and passes the observed value \texttt{y} back to the model. The accumulator stores the total log-likelihood across a series of observe operations, which is required for acceptance decisions within Metropolis-Hastings inference algorithms.
+
+\begin{lstlisting}[language=OCaml]
+module Likelihood = struct
+  module Make(T : R) : ...
+    type a = T.t
+    module O = Observe.Make(T)
+    let capability : a observe_capability = object
+      method observe d addr y = perform (O.Observe (d, addr, y))
+    end
+    let run (Model m) =
+      let w = ref 0. in
+      match m capability with
+      | ans -> (ans, !w)
+      | effect O.Observe (d, _, y), k ->
+          w := !w +. log_prob y d;
+          continue k y
+  end
+end
+\end{lstlisting}
+
+A \textit{handler stack} is the composition of multiple handlers that is made possible by OCaml's row polymorphism and our \texttt{run\_with\_capabilities} method.
+
+When \texttt{run\_with\_capabilities} applies the model to the model specific capability object, the model begins executing and performing effects. These effects propagate outward through the handler stack. Each \texttt{run} function inspects the effects it encounters and either intercepts them if they belong to its own functor instance, or lets them pass through to the next enclosing layer.
+
+We construct the coin-flip model's handler stack using these two handlers. 
+
+\begin{lstlisting}[language=OCaml]
+let exec_coin_flip (tr0 : Trace.t)
+(model : (coin_flip_cap, float) model)
+: float * float * Trace.t =
+  let module RT = ReuseTrace.Make(struct type t = float end) in
+  let module LH = Likelihood.Make(struct type t = int   end) in
+  let tr = ref tr0 in
+  let (ans, w) =
+    RT.run tr
+      (Model (fun scap ->
+        LH.run
+        Model (fun ocap ->
+          let caps : coin_flip_cap = object
+            method sample_float d addr   = scap#sample d addr
+            method observe_int  d addr y = ocap#observe d addr y
+          end in
+          run_with_capabilities caps model))))
+  in
+  (ans, w, !tr)
+\end{lstlisting}
+
+Because each handler only catches the monomorphic effect constructor produced by its own \texttt{Make} call, there is no ambiguity: a \texttt{float Sample} effect will pass straight through \texttt{LH.run} uncaught and be intercepted by the enclosing \texttt{RT.run}. Each \texttt{run} function demands only that the model's capability type contains at least the methods it provides, leaving room for the outer layers to supply the remaining methods. Row polymorphism makes this nesting well-typed.
+
+With this architecture, we embed the model specifications into an \texttt{exec\_model} method that is passed to the inference algorithms. This ensures that all inference algorithms are model-independent, as all of our \texttt{exec\_model} methods return the same triple of \texttt{(ans, w, !tr)} , which corresponds to quantity being inferred, how probable the observations are for that quantity, and exactly which random choices led to it in a trace respectively. 
+
+
+Below is a sequence diagram of the model's handler stack:
+
+\begin{figure}[htbp]
+    \centering
+\includegraphics[width=0.65\linewidth]{ug/modelhandlerstack.png}
+    \caption{Model Handler Stack's Sequence Diagram}
+    \label{fig:modelhandlerstack}
+\end{figure}
+
+Inference algorithms consume the \texttt{exec\_coin\_flip} and build upon this stack by adding inference-specific handlers.
+
+\section{Inference Algorithms in ProbML}
+
+Show skeletons, then algorithms all with same shape on it. Maybe here we can run inference on the coin flipper. 
+
+Then we talk about hybrid after introducing MH and PF in subsections. 
+
+RMPF/PMH will also show composability here. 
+
+Add diagrams for composability here (it will look really good for hybrids) and above to reusemodel and likelihood if neccesary there. 
+
+
+\section{Simulating a Hidden Markov Model in ProbML}
+
+Just make an HMM and then run it with inference algos mainly to show that models and inference algos are unaware of each other and the same model works on both.
+
+
+\chapter{Evaluation}
+
+This chapter will focus on evaluating our implementation of probabilistic inference algorithms against other implementations. These two implementations differ in architecture and language. Also included is a reflection on the code's structure and assorted architectural decisions.
+
+\section{Experimental Setup}
+
+This dissertation replicates the experimental benchmarks from \cite{ProbFX}. These benchmarks measure how efficient inference algorithms are across two different probabilistic programming languages. 
+
+We benchmark three probabilistic models:
+
+\begin{itemize}
+    \item Hidden Markov Model (HMM)
+    \item Linear Regression
+    \item Latent Dirichlet Allocation (LDA)
+  \end{itemize}
+
+Four different algorithms are evaluated upon these models: 
+
+\begin{itemize}
+    \item Single-Site Metropolis Hastings (SSMH)
+    \item Multinomial Particle Filters (MPF)
+    \item Particle Metropolis Hastings (PMH)
+    \item Resample Move Particle Filter (RMPF)
+  \end{itemize}
+
+Two kinds of experiments are run on all of these models, resulting in twenty-four quantitative experiments. The first kind of experiment increases the number of algorithm parameters while keeping the model size fixed. The second kind of experiment keeps the number of algorithm parameters fixed while the model size grows. Here, Algorithm parameters are steps to a Metropolis-Hastings algorithm, particles to a standard particle filter algorithm, and a combination of both for hybrid algorithms.
+
+All experiments were run on an Apple MacBook Pro with an M2 Chip and 8GB of Ram. To mitigate the effects of CPU scheduling and background system processes, each benchmark was repeated ten times and the reported runtime is the mean across all runs. The averaging process normalizes outliers, producing smoother runtime curves. This is consistent with the methodology used in \cite{ProbFX}.
+
+To eliminate randomness as much as possible, we introduce a process to fix the random number generation across the two languages. Haskell and OCaml have two different standard random algorithms implemented, so our experiments fix the random process by pre-generating a shared sequence of uniform random values in the [0,1) using OCaml's random number generator seeded with a fixed value of 42. \textbf{(Add metaprogram, random across two diff languages reduces noise)}
+
+This sequence is stored as a static array and made available to both implementations, ensuring that both languages draw from an identical sequence of random numbers during inference. Both implementations index into this array sequentially, resetting to the start of the sequence at the beginning of each algorithm run.
+\textbf{
+Change to median from mean!
+}
+
+\section{Quantitative Comparison}
+
+The results of the twenty-four quantitative experiments have been divided into four sub-sections below, each exploring an algorithm's results on three models and the two kinds of experiments performed on it.  
+
+\subsection{Single-Site Metropolis Hastings}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\linewidth]{ug/pictures/ssmh_experiment1_varying_iterations.png}
+    \caption{SSMH : Increasing Algorithm Parameters with Fixed Model Size}
+    \label{fig:ssmh1}
+\end{figure}
+
+The results of Experiment 1 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM), keeping the model size fixed. Both \cite{ProbFX} and our implementation show nearly linear scaling with few outliers. Our implementation for linear regression begins at 0.68ms at a 100 steps and reaches 5.85ms at a thousand steps, which is consistently around 10x faster than \cite{ProbFX}, which begins at 6.34ms at a 100 steps and reaches 66.83ms for a 1000 steps. 
+
+
+For HMMs with 50 nodes, our implementation scales from 2.28ms at 100 steps to 22.61ms at 1000 steps. This shows linear scaling once again, and is consistently around 5x faster than \cite{ProbFX}, which scales from 10.12ms to 120.39ms over the same range.This is a lesser speedup compared to linear regression because of the structural difference between the models.Linear Regression has two sample sites, and fifty observe sites, and HMMs have fifty sample and observe sites.
+
+
+
+\begin{figure}[htbp]
+    \centering
+\includegraphics[width=1\linewidth]{ug/pictures/ssmh_experiment2_varying_model_size.png}
+    \caption{SSMH : Increasing Model Size with Fixed Algorithm Parameters}
+    \label{fig:ssmh2}
+\end{figure}
+
+
+The results of Experiment 2 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM) with a varying model size and fixed number of SSMH steps. Our implementation for linear regression begins at 0.56ms at 50 observations and reaches 5.06ms at 500 observations, which grows from around 11x faster than \cite{ProbFX} at 50 observations to 51x faster at 500 observations, where \cite{ProbFX} begins at 6.19ms and reaches 261.17ms, showcasing super-linear scaling.
+
+
+For HMMs with 50 nodes, our implementation scales from 2.23ms at 50 nodes to 28.87ms at 500 nodes. This shows linear scaling, unlike Linear Regression, and is consistently around 4-5x faster than ProbFX, which scales from 9.34ms to 132.54ms over the same range. 
+
+
+\subsection{Multinomial Particle Filter}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\linewidth]{ug/pictures/mpf_experiment1_varying_iterations.png}
+    \caption{MPF : Increasing Algorithm Parameters with Fixed Model Size}
+    \label{fig:mpf1}
+\end{figure}
+
+The results of Experiment 1 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM), keeping the model size fixed. Both \cite{ProbFX} and our implementation show nearly linear scaling with few outliers. Our implementation for linear regression begins at 0.68ms at a 100 steps and reaches 5.85ms at a thousand steps, which is consistently around 10x faster than \cite{ProbFX}, which begins at 6.34ms at a 100 steps and reaches 66.83ms for a 1000 steps. 
+
+
+For HMMs with 50 nodes, our implementation scales from 2.28ms at 100 steps to 22.61ms at 1000 steps. This shows linear scaling once again, and is consistently around 5x faster than \cite{ProbFX}, which scales from 10.12ms to 120.39ms over the same range.This is a lesser speedup compared to linear regression because of the structural difference between the models.Linear Regression has two sample sites, and fifty observe sites, and HMMs have fifty sample and observe sites.
+
+
+\begin{figure}[htbp]
+    \centering
+\includegraphics[width=1\linewidth]{ug/pictures/mpf_experiment2_varying_model_size.png}
+    \caption{MPF : Increasing Model Size with Fixed Algorithm Parameters}
+    \label{fig:mpf2}
+\end{figure}
+
+
+The results of Experiment 2 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM) with a varying model size and fixed number of SSMH steps. Our implementation for linear regression begins at 0.56ms at 50 observations and reaches 5.06ms at 500 observations, which grows from around 11x faster than \cite{ProbFX} at 50 observations to 51x faster at 500 observations, where \cite{ProbFX} begins at 6.19ms and reaches 261.17ms, showcasing super-linear scaling.
+
+
+For HMMs with 50 nodes, our implementation scales from 2.23ms at 50 nodes to 28.87ms at 500 nodes. This shows linear scaling, unlike Linear Regression, and is consistently around 4-5x faster than ProbFX, which scales from 9.34ms to 132.54ms over the same range. 
+
+
+\subsection{Particle Metropolis Hastings}
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\linewidth]{ug/pictures/pmh_experiment1_varying_iterations.png}
+    \caption{PMH : Increasing Algorithm Parameters with Fixed Model Size}
+    \label{fig:pmh1}
+\end{figure}
+
+The results of Experiment 1 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM), keeping the model size fixed. Both \cite{ProbFX} and our implementation show nearly linear scaling with few outliers. Our implementation for linear regression begins at 0.68ms at a 100 steps and reaches 5.85ms at a thousand steps, which is consistently around 10x faster than \cite{ProbFX}, which begins at 6.34ms at a 100 steps and reaches 66.83ms for a 1000 steps. 
+
+
+For HMMs with 50 nodes, our implementation scales from 2.28ms at 100 steps to 22.61ms at 1000 steps. This shows linear scaling once again, and is consistently around 5x faster than \cite{ProbFX}, which scales from 10.12ms to 120.39ms over the same range.This is a lesser speedup compared to linear regression because of the structural difference between the models. Linear Regression has two sample sites, and fifty observe sites, and HMMs have fifty sample and observe sites.
+
+
+\begin{figure}[htbp]
+    \centering
+\includegraphics[width=1\linewidth]{ug/pictures/pmh_experiment2_varying_model_size.png}
+    \caption{PMH : Increasing Model Size with Fixed Algorithm Parameters}
+    \label{fig:pmh2}
+\end{figure}
+
+The results of Experiment 2 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM) with a varying model size and fixed number of SSMH steps. Our implementation for linear regression begins at 0.56ms at 50 observations and reaches 5.06ms at 500 observations, which grows from around 11x faster than \cite{ProbFX} at 50 observations to 51x faster at 500 observations, where \cite{ProbFX} begins at 6.19ms and reaches 261.17ms, showcasing super-linear scaling.
+
+
+For HMMs with 50 nodes, our implementation scales from 2.23ms at 50 nodes to 28.87ms at 500 nodes. This shows linear scaling, unlike Linear Regression, and is consistently around 4-5x faster than ProbFX, which scales from 9.34ms to 132.54ms over the same range. 
+
+
+
+\subsection{Resample-Move Particle Filter}
+
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\linewidth]{ug/pictures/rmpf_experiment1_varying_iterations.png}
+    \caption{RMPF : Increasing Algorithm Parameters with Fixed Model Size}
+    \label{fig:rmpf1}
+\end{figure}
+
+The results of Experiment 1 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM), keeping the model size fixed. Both \cite{ProbFX} and our implementation show nearly linear scaling with few outliers. Our implementation for linear regression begins at 0.68ms at a 100 steps and reaches 5.85ms at a thousand steps, which is consistently around 10x faster than \cite{ProbFX}, which begins at 6.34ms at a 100 steps and reaches 66.83ms for a 1000 steps. 
+
+
+For HMMs with 50 nodes, our implementation scales from 2.28ms at 100 steps to 22.61ms at 1000 steps. This shows linear scaling once again, and is consistently around 5x faster than \cite{ProbFX}, which scales from 10.12ms to 120.39ms over the same range.This is a lesser speedup compared to linear regression because of the structural difference between the models.Linear Regression has two sample sites, and fifty observe sites, and HMMs have fifty sample and observe sites.
+
+
+\begin{figure}[htbp]
+    \centering
+\includegraphics[width=1\linewidth]{ug/pictures/rmpf_experiment2_varying_model_size.png}
+    \caption{RMPF : Increasing Model Size with Fixed Algorithm Parameters}
+    \label{fig:rmpf2}
+\end{figure}
+
+The results of Experiment 2 show the runtime of SSMH on Linear Regression and Hidden Markov Models (HMM) with a varying model size and fixed number of SSMH steps. Our implementation for linear regression begins at 0.56ms at 50 observations and reaches 5.06ms at 500 observations, which grows from around 11x faster than \cite{ProbFX} at 50 observations to 51x faster at 500 observations, where \cite{ProbFX} begins at 6.19ms and reaches 261.17ms, showcasing super-linear scaling.
+
+
+For HMMs with 50 nodes, our implementation scales from 2.23ms at 50 nodes to 28.87ms at 500 nodes. This shows linear scaling, unlike Linear Regression, and is consistently around 4-5x faster than ProbFX, which scales from 9.34ms to 132.54ms over the same range. 
+
+
+\section{Qualitative Comparison}
+
+\cite{ProbFX}'s algorithms are implemented in Haskell using the Extensible Freer Monad, which is an embedding of a typed effect system into Haskell \citep{extensiblefreermonad}. It represents an effectful computation as a data structure called "\textbf{Comp es a}"
+
+This data structure returns a value of type \textbf{a}, and performs any effects within the effect signature \textbf{es}. It is represented as a tree has two kinds of nodes. The first kind are leaf nodes \textbf{Val x} that contain pure values x of type a, and the second kind are operation nodes \textbf{Op op k}
+contain operations op of the of 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

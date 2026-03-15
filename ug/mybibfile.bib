@@ -1,17 +1,160 @@
-@Book{P2,
-  author     = "Chen-Chung Chang and H. Jerome Keisler",
-  title      = "Model Theory",
-  publisher  = "North-Holland",
-  edition   = {Third},
-  year       = 1990,
+@inproceedings{ProbFX,
+author = {Nguyen, Minh and Perera, Roly and Wang, Meng and Ramsay, Steven},
+title = {Effect Handlers for Programmable Inference},
+year = {2023},
+isbn = {9798400702983},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3609026.3609729},
+doi = {10.1145/3609026.3609729},
+abstract = {Inference algorithms for probabilistic programming are complex imperative programs with many moving parts. Efficient inference often requires customising an algorithm to a particular probabilistic model or problem, sometimes called inference programming. Most inference frameworks are implemented in languages that lack a disciplined approach to side effects, which can result in monolithic implementations where the structure of the algorithms is obscured and inference programming is hard. Functional programming with typed effects offers a more structured and modular foundation for programmable inference, with monad transformers being the primary structuring mechanism explored to date. This paper presents an alternative approach to inference programming based on algebraic effects. Using effect signatures to specify the key operations of the algorithms, and effect handlers to modularly interpret those operations for specific variants, we develop two abstract algorithms, or inference patterns, representing two important classes of inference: Metropolis-Hastings and particle filtering. We show how our approach reveals the algorithms’ high-level structure, and makes it easy to tailor and recombine their parts into new variants. We implement the two inference patterns as a Haskell library, and discuss the pros and cons of algebraic effects vis-\`{a}-vis monad transformers as a structuring mechanism for modular imperative algorithm design.},
+booktitle = {Proceedings of the 16th ACM SIGPLAN International Haskell Symposium},
+pages = {44–58},
+numpages = {15},
+keywords = {algebraic effects, functional programming, modularity, probabilistic programming},
+location = {Seattle, WA, USA},
+series = {Haskell 2023}
 }
 
-@inproceedings{P1,
-  author    = {Hiroki Arimura},
-  title     = {Learning Acyclic First-Order Horn Sentences from Entailment},
-  booktitle = {Proc. of the 8th Intl. Conf. on Algorithmic Learning Theory, ALT '97},
-  year      = {1997},
-  pages     = {432-445},
-  ee        = {http://dx.doi.org/10.1007/3-540-63577-7_59},
-  bibsource = {DBLP, http://dblp.uni-trier.de}
+
+@inproceedings{Gen,
+author = {Cusumano-Towner, Marco F. and Saad, Feras A. and Lew, Alexander K. and Mansinghka, Vikash K.},
+title = {Gen: a general-purpose probabilistic programming system with programmable inference},
+year = {2019},
+isbn = {9781450367127},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3314221.3314642},
+doi = {10.1145/3314221.3314642},
+abstract = {Although probabilistic programming is widely used for some restricted classes of statistical models, existing systems lack the flexibility and efficiency needed for practical use with more challenging models arising in fields like computer vision and robotics. This paper introduces Gen, a general-purpose probabilistic programming system that achieves modeling flexibility and inference efficiency via several novel language constructs: (i) the generative function interface for encapsulating probabilistic models; (ii) interoperable modeling languages that strike different flexibility/efficiency trade-offs; (iii) combinators that exploit common patterns of conditional independence; and (iv) an inference library that empowers users to implement efficient inference algorithms at a high level of abstraction. We show that Gen outperforms state-of-the-art probabilistic programming systems, sometimes by multiple orders of magnitude, on diverse problems including object tracking, estimating 3D body pose from a depth image, and inferring the structure of a time series.},
+booktitle = {Proceedings of the 40th ACM SIGPLAN Conference on Programming Language Design and Implementation},
+pages = {221–236},
+numpages = {16},
+keywords = {Markov chain Monte Carlo, Probabilistic programming, sequential Monte Carlo, variational inference},
+location = {Phoenix, AZ, USA},
+series = {PLDI 2019}
+}
+
+@article{Pyro,
+author = {Bingham, Eli and Chen, Jonathan P. and Jankowiak, Martin and Obermeyer, Fritz and Pradhan, Neeraj and Karaletsos, Theofanis and Singh, Rohit and Szerlip, Paul and Horsfall, Paul and Goodman, Noah D.},
+title = {Pyro: deep universal probabilistic programming},
+year = {2019},
+issue_date = {January 2019},
+publisher = {JMLR.org},
+volume = {20},
+number = {1},
+issn = {1532-4435},
+abstract = {Pyro is a probabilistic programming language built on Python as a platform for developing advanced probabilistic models in AI research. To scale to large data sets and high-dimensional models, Pyro uses stochastic variational inference algorithms and probability distributions built on top of PyTorch, a modern GPU-accelerated deep learning framework. To accommodate complex or model-specific algorithmic behavior, Pyro leverages Poutine, a library of composable building blocks for modifying the behavior of probabilistic programs.},
+journal = {J. Mach. Learn. Res.},
+month = jan,
+pages = {973–978},
+numpages = {6},
+keywords = {approximate Bayesian inference, deep learning, generative models, graphical models, probabilistic programming}
+}
+
+
+@inproceedings{Anglican,
+author = {Tolpin, David and van de Meent, Jan-Willem and Yang, Hongseok and Wood, Frank},
+title = {Design and Implementation of Probabilistic Programming Language Anglican},
+year = {2016},
+isbn = {9781450347679},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3064899.3064910},
+doi = {10.1145/3064899.3064910},
+abstract = {Anglican is a probabilistic programming system designed to interoperate with Clojure and other JVM languages. We introduce the programming language Anglican, outline our design choices, and discuss in depth the implementation of the Anglican language and runtime, including macro-based compilation, extended CPS-based evaluation model, and functional representations for probabilistic paradigms, such as a distribution, a random process, and an inference algorithm.We show that a probabilistic functional language can be implemented efficiently and integrated tightly with a conventional functional language with only moderate computational overhead. We also demonstrate how advanced probabilistic modelling concepts are mapped naturally to the functional foundation.},
+booktitle = {Proceedings of the 28th Symposium on the Implementation and Application of Functional Programming Languages},
+articleno = {6},
+numpages = {12},
+location = {Leuven, Belgium},
+series = {IFL 2016}
+}
+
+@article{AdBySigal,
+  author       = {Jesse Sigal},
+  title        = {Automatic Differentiation via Effects and Handlers: An Implementation
+                  in Frank},
+  journal      = {CoRR},
+  volume       = {abs/2101.08095},
+  year         = {2021}
+}
+
+@article{Plotkin2003,
+  title = {Algebraic Operations and Generic Effects},
+  volume = {11},
+  ISSN = {1572-9095},
+  url = {http://dx.doi.org/10.1023/A:1023064908962},
+  DOI = {10.1023/a:1023064908962},
+  number = {1},
+  journal = {Applied Categorical Structures},
+  publisher = {Springer Science and Business Media LLC},
+  author = {Plotkin,  Gordon and Power,  John},
+  year = {2003},
+  month = feb,
+  pages = {69–94}
+}
+
+@inbook{Plotkin2009,
+  title = {Handlers of Algebraic Effects},
+  ISBN = {9783642005909},
+  ISSN = {1611-3349},
+  url = {http://dx.doi.org/10.1007/978-3-642-00590-9_7},
+  DOI = {10.1007/978-3-642-00590-9_7},
+  booktitle = {Programming Languages and Systems},
+  publisher = {Springer Berlin Heidelberg},
+  author = {Plotkin,  Gordon and Pretnar,  Matija},
+  year = {2009},
+  pages = {80–94}
+}
+
+
+@misc{UNIXDHil,
+  doi = {10.7488/ERA/2122},
+  url = {https://era.ed.ac.uk/handle/1842/38868},
+  author = {Hillerstr\"{o}m,  Daniel},
+  keywords = {effect handlers,  first-class control,  row polymorphism,  generalised continuations,  continuation passing style,  abstract machine semantics,  typed macro expressiveness,  asymptotic complexity,  unix,  effect handler oriented programming},
+  title = {Foundations for programming and implementing effect handlers},
+  publisher = {The University of Edinburgh},
+  year = {2022}
+}
+
+
+@misc{vandemeent2021introductionprobabilisticprogramming,
+      title={An Introduction to Probabilistic Programming}, 
+      author={Jan-Willem van de Meent and Brooks Paige and Hongseok Yang and Frank Wood},
+      year={2021},
+      eprint={1809.10756},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/1809.10756}, 
+}
+
+@inproceedings{extensiblefreermonad,
+  author       = {Oleg Kiselyov and
+                  Hiromi Ishii},
+  title        = {Freer monads, more extensible effects},
+  booktitle    = {Haskell},
+  pages        = {94--105},
+  publisher    = {{ACM}},
+  year         = {2015}
+}
+
+@inproceedings{RowPoly,
+  author       = {Daniel Hillerstr{\"{o}}m and
+                  Sam Lindley},
+  title        = {Liberating effects with rows and handlers},
+  booktitle    = {TyDe@ICFP},
+  pages        = {15--27},
+  publisher    = {{ACM}},
+  year         = {2016}
+}
+
+
+@inproceedings{TamedCAML,
+  author       = {Marc Stiegler},
+  title        = {Emily: {A} High Performance Language for Enabling Secure Cooperation},
+  booktitle    = {{C5}},
+  pages        = {163--169},
+  publisher    = {{IEEE} Computer Society},
+  year         = {2007}
 }

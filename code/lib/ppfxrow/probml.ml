@@ -863,19 +863,11 @@ let multinomial_resample : 'a particle list -> 'a particle list
     let max_w   = List.fold_left max neg_infinity weights in
     let scaled  = List.map (fun w -> exp (w -. max_w)) weights in
     let total   = List.fold_left ( +. ) 0. scaled in
-    let norm    = List.map (fun w -> w /. total) scaled in
+    let norm_ws = Array.of_list (List.map (fun w -> w /. total) scaled) in
+    let ps      = Array.of_list particles in
     List.init n (fun _ ->
-      let u = Rng.next () in
-      let rec pick ws ps cum =
-        match ws, ps with
-        | [], _              -> List.hd particles
-        | [_], p :: _        -> p
-        | w :: ws', p :: ps' ->
-            let cum' = cum +. w in
-            if u <= cum' then p else pick ws' ps' cum'
-        | _, []              -> List.hd particles
-      in
-      { (pick norm particles 0.) with weight = 0. })
+      let idx = Dist.draw (Rng.next ()) (Dist.categorical norm_ws) in
+      { ps.(idx) with weight = 0. })
 
 let generic_pf (type a) (module RS : RESAMPLE with type a = a)
     n tr0 (advance : Trace.t -> a advance_result)

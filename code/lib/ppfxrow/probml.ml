@@ -911,7 +911,7 @@ let mpf_eff (type a) n (advance : Trace.t -> a advance_result) =
 
 (*hybrid*)
 
-let exec_pf_eff (type a) n_particles (advance : Trace.t -> a advance_result) tr
+let handle_pmh (type a) n_particles (advance : Trace.t -> a advance_result) tr
     : a * float * Trace.t =
   let module RS = Resample.Make(struct type t = a end) in
   let particles = handle_multinomial (module RS) (fun () ->
@@ -941,7 +941,7 @@ let pmh_eff (type a) n_mhsteps n_particles
   let (_, _, tr_init) = exec Trace.empty in
   handle_im (module P) (fun () ->
     generic_mh (module P) n_mhsteps tr_init
-      (exec_pf_eff n_particles advance))
+      (handle_pmh n_particles advance))
 
 let handle_move_eff (type a) (module RS : RESAMPLE with type a = a)
     (n_mhsteps : int)

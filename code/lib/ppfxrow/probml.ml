@@ -227,30 +227,6 @@ type 'a advance_result =
 
 type 'a particle = { result : 'a advance_result; weight : float }
 
-type _ Effect.t += Resample : 'a particle list -> 'a particle list Effect.t
-
-let resample : 'a particle list -> 'a particle list
-  = fun particles ->
-    let n       = List.length particles in
-    let weights = List.map (fun p -> p.weight) particles in
-    let max_w   = List.fold_left max neg_infinity weights in
-    let scaled  = List.map (fun w -> exp (w -. max_w)) weights in
-    let total   = List.fold_left ( +. ) 0. scaled in
-    let norm    = List.map (fun w -> w /. total) scaled in
-    (* let ws_avg  = log total -. log (float_of_int n) +. max_w in *)
-    List.init n (fun _ ->
-      let u = Rng.next () in
-      let rec pick ws ps cum =
-        match ws, ps with
-        | [], _              -> List.hd particles
-        | [_], p :: _        -> p
-        | w :: ws', p :: ps' ->
-            let cum' = cum +. w in
-            if u <= cum' then p else pick ws' ps' cum'
-        | _, []              -> List.hd particles
-      in
-      { (pick norm particles 0.) with weight = 0. })
-
 (* ============================================================
    CAPABILITY INFRASTRUCTURE
    ============================================================ *)

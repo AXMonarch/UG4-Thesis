@@ -757,11 +757,13 @@ let exec_pf_coin_flip (tr0 : Trace.t) (model : (coin_flip_cap, float) model)
                    ; weight = 0.
                    ; trace  = !tr }))))
 
-(* mh *)
+(* ============================================================
+   MH INFERENCE
+   ============================================================ *)
 
 module type PROPOSE = sig
-  type a      (* model return type *)
-  type w      (* weight type *)
+  type a
+  type w
   type _ Effect.t += Propose : Trace.t -> Trace.t Effect.t
   type _ Effect.t += Accept  : (a * w * Trace.t) * (a * w * Trace.t)
                              -> (a * w * Trace.t) Effect.t
@@ -777,72 +779,118 @@ module Propose = struct
   end
 end
 
-let generic_mh (type a) (module P : PROPOSE with type a = a and type w = float)
-    n tr0 exec =
+class type propose_cap = object
+  method propose : Trace.t -> Trace.t
+end
+
+class type ['a] accept_cap = object
+  method accept : ('a * float * Trace.t)
+               -> ('a * float * Trace.t)
+               -> ('a * float * Trace.t)
+end
+
+let generic_mh (type a)
+    n tr0
+    (exec    : Trace.t -> a * float * Trace.t)
+    (pcap    : propose_cap)
+    (acap    : a accept_cap)
+    : (a * float * Trace.t) list =
   let rec loop i state chain =
     if i >= n then chain
     else
-      let (_, w, tr)     = state in
-      let tr'            = Effect.perform (P.Propose tr) in
+      let (_, _, tr)     = state in
+      let tr'            = pcap#propose tr in
       let (x', w', tr'') = exec tr' in
-      let next           = Effect.perform (P.Accept (state, (x', w', tr''))) in
+      let next           = acap#accept state (x', w', tr'') in
       loop (i + 1) next (next :: chain)
   in
   let init = exec tr0 in
   loop 0 init [init]
 
-let handle_im (type a)
-    (module P : PROPOSE with type a = a and type w = float)
-    (f : unit -> (a * float * Trace.t) list)
-    : (a * float * Trace.t) list =
-  match f () with
-  | ans -> ans
-  | effect P.Propose tr, k ->
-      let tr' = Trace.AddrMap.map (fun _ -> Rng.next ()) tr in
-      Effect.Deep.continue k tr'
-  | effect P.Accept (current, proposed), k ->
-      let (_, w,  _) = current  in
-      let (_, w', _) = proposed in
-      let next = if exp (w' -. w) > Rng.next () then proposed else current in
-      Effect.Deep.continue k next
+(* ---- IM handler — constructs IM caps via Propose module ---- *)
 
-let handle_ssmh (type a)
-    (module P : PROPOSE with type a = a and type w = float)
-    (f : unit -> (a * float * Trace.t) list)
-    : (a * float * Trace.t) list =
-  match f () with
-  | ans -> ans
-  | effect P.Propose tr, k ->
-      let addrs   = Trace.addresses tr in
-      let n_addrs = List.length addrs in
-      if n_addrs = 0 then Effect.Deep.continue k tr
-      else
-        let i    = int_of_float (Rng.next () *. float_of_int n_addrs) in
-        let addr = List.nth addrs i in
-        let tr'  = Trace.AddrMap.add addr (Rng.next ()) tr in
-        Effect.Deep.continue k tr'
-  | effect P.Accept (current, proposed), k ->
-      let (_, w,  _) = current  in
-      let (_, w', _) = proposed in
-      let n   = Trace.size (let (_,_,t) = current  in t) in
-      let n'  = Trace.size (let (_,_,t) = proposed in t) in
-      let ratio = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
-      let next = if ratio > Rng.next () then proposed else current in
-      Effect.Deep.continue k next
+module type IM_HANDLER = sig
+  type a
+  val run : (propose_cap -> a accept_cap -> (a * float * Trace.t) list)
+          -> (a * float * Trace.t) list
+end
+
+module ImHandler = struct
+  module Make(A : R) : IM_HANDLER with type a = A.t = struct
+    type a = A.t
+    module P = Propose.Make(A)(struct type t = float end)
+    let run f =
+      let pcap = object
+        method propose tr = Effect.perform (P.Propose tr)
+      end in
+      let acap = object
+        method accept current proposed = Effect.perform (P.Accept (current, proposed))
+      end in
+      match f pcap acap with
+      | ans -> ans
+      | effect P.Propose tr, k ->
+          let tr' = Trace.AddrMap.map (fun _ -> Rng.next ()) tr in
+          Effect.Deep.continue k tr'
+      | effect P.Accept (current, proposed), k ->
+          let (_, w,  _) = current in
+          let (_, w', _) = proposed in
+          let next = if exp (w' -. w) > Rng.next () then proposed else current in
+          Effect.Deep.continue k next
+  end
+end
+
+(* ---- SSMH handler — constructs SSMH caps via Propose module ---- *)
+
+module type SSMH_HANDLER = sig
+  type a
+  val run : (propose_cap -> a accept_cap -> (a * float * Trace.t) list)
+          -> (a * float * Trace.t) list
+end
+
+module SsmhHandler = struct
+  module Make(A : R) : SSMH_HANDLER with type a = A.t = struct
+    type a = A.t
+    module P = Propose.Make(A)(struct type t = float end)
+    let run f =
+      let pcap = object
+        method propose tr = Effect.perform (P.Propose tr)
+      end in
+      let acap = object
+        method accept current proposed = Effect.perform (P.Accept (current, proposed))
+      end in
+      match f pcap acap with
+      | ans -> ans
+      | effect P.Propose tr, k ->
+          let addrs   = Trace.addresses tr in
+          let n_addrs = List.length addrs in
+          if n_addrs = 0 then Effect.Deep.continue k tr
+          else
+            let i    = int_of_float (Rng.next () *. float_of_int n_addrs) in
+            let addr = List.nth addrs i in
+            let tr'  = Trace.AddrMap.add addr (Rng.next ()) tr in
+            Effect.Deep.continue k tr'
+      | effect P.Accept (current, proposed), k ->
+          let (_, w,  _) = current in
+          let (_, w', _) = proposed in
+          let n   = Trace.size (let (_,_,t) = current  in t) in
+          let n'  = Trace.size (let (_,_,t) = proposed in t) in
+          let ratio = exp (w' -. w) *. (float_of_int n /. float_of_int n') in
+          let next = if ratio > Rng.next () then proposed else current in
+          Effect.Deep.continue k next
+  end
+end
 
 let imh_eff (type a) n (exec : Trace.t -> a * float * Trace.t) =
-  let module P = Propose.Make
-    (struct type t = a end)
-    (struct type t = float end) in
-  handle_im (module P) (fun () -> generic_mh (module P) n Trace.empty exec)
+  let module IMH = ImHandler.Make(struct type t = a end) in
+  IMH.run (fun pcap acap -> generic_mh n Trace.empty exec pcap acap)
 
 let ssmh_eff (type a) n (exec : Trace.t -> a * float * Trace.t) =
-  let module P = Propose.Make
-    (struct type t = a end)
-    (struct type t = float end) in
-  handle_ssmh (module P) (fun () -> generic_mh (module P) n Trace.empty exec)
+  let module SSMH = SsmhHandler.Make(struct type t = a end) in
+  SSMH.run (fun pcap acap -> generic_mh n Trace.empty exec pcap acap)
 
-(* pf *)
+(* ============================================================
+   PF INFERENCE
+   ============================================================ *)
 
 module type RESAMPLE = sig
   type a
@@ -854,6 +902,10 @@ module Resample = struct
     type a = T.t
     type _ Effect.t += Resample : a particle list -> a particle list Effect.t
   end
+end
+
+class type ['a] resample_cap = object
+  method resample : 'a particle list -> 'a particle list
 end
 
 let multinomial_resample : 'a particle list -> 'a particle list
@@ -869,8 +921,10 @@ let multinomial_resample : 'a particle list -> 'a particle list
       let idx = Dist.draw (Rng.next ()) (Dist.categorical norm_ws) in
       { ps.(idx) with weight = 0. })
 
-let generic_pf (type a) (module RS : RESAMPLE with type a = a)
-    n tr0 (advance : Trace.t -> a advance_result)
+let generic_pf (type a)
+    n tr0
+    (advance : Trace.t -> a advance_result)
+    (rcap    : a resample_cap)
     : a particle list =
   let init = List.init n (fun _ ->
     { result = advance tr0; weight = 0. }
@@ -886,7 +940,7 @@ let generic_pf (type a) (module RS : RESAMPLE with type a = a)
         | Stepped  s -> { p with weight = p.weight +. s.weight }
         | Finished _ -> p
       ) particles in
-      let resampled = Effect.perform (RS.Resample weighted) in
+      let resampled = rcap#resample weighted in
       let stepped = List.map (fun p ->
         match p.result with
         | Stepped  s -> { p with result = s.next_particle }
@@ -897,25 +951,41 @@ let generic_pf (type a) (module RS : RESAMPLE with type a = a)
   in
   loop init
 
-let handle_multinomial (type a) (module RS : RESAMPLE with type a = a)
-    (f : unit -> a particle list) : a particle list =
-  match f () with
-  | ans -> ans
-  | effect RS.Resample ps, k ->
-      Effect.Deep.continue k (multinomial_resample ps)
+(* ---- Multinomial handler — constructs resample cap via Resample module ---- *)
+
+module type MULTINOMIAL_HANDLER = sig
+  type a
+  val run : (a resample_cap -> a particle list) -> a particle list
+end
+
+module MultinomialHandler = struct
+  module Make(T : R) : MULTINOMIAL_HANDLER with type a = T.t = struct
+    type a = T.t
+    module RS = Resample.Make(T)
+    let run f =
+      let rcap = object
+        method resample ps = Effect.perform (RS.Resample ps)
+      end in
+      match f rcap with
+      | ans -> ans
+      | effect RS.Resample ps, k ->
+          Effect.Deep.continue k (multinomial_resample ps)
+  end
+end
 
 let mpf_eff (type a) n (advance : Trace.t -> a advance_result) =
-  let module RS = Resample.Make(struct type t = a end) in
-  handle_multinomial (module RS) (fun () ->
-    generic_pf (module RS) n Trace.empty advance)
+  let module MPF = MultinomialHandler.Make(struct type t = a end) in
+  MPF.run (fun rcap -> generic_pf n Trace.empty advance rcap)
 
-(*hybrid*)
+(* ============================================================
+   HYBRID INFERENCE
+   ============================================================ *)
 
 let handle_pmh (type a) n_particles (advance : Trace.t -> a advance_result) tr
     : a * float * Trace.t =
-  let module RS = Resample.Make(struct type t = a end) in
-  let particles = handle_multinomial (module RS) (fun () ->
-    generic_pf (module RS) n_particles tr advance) in
+  let module PMH = MultinomialHandler.Make(struct type t = a end) in
+  let particles = PMH.run (fun rcap ->
+    generic_pf n_particles tr advance rcap) in
   let finished = List.filter_map (fun p ->
     match p.result with
     | Finished f -> Some (f.value, p.weight, f.trace)
@@ -935,39 +1005,51 @@ let handle_pmh (type a) n_particles (advance : Trace.t -> a advance_result) tr
 let pmh_eff (type a) n_mhsteps n_particles
     (advance : Trace.t -> a advance_result)
     (exec : Trace.t -> a * float * Trace.t) =
-  let module P = Propose.Make
-    (struct type t = a end)
-    (struct type t = float end) in
+  let module IMH = ImHandler.Make(struct type t = a end) in
   let (_, _, tr_init) = exec Trace.empty in
-  handle_im (module P) (fun () ->
-    generic_mh (module P) n_mhsteps tr_init
-      (handle_pmh n_particles advance))
+  IMH.run (fun pcap acap ->
+    generic_mh n_mhsteps tr_init
+      (handle_pmh n_particles advance) pcap acap)
 
-let handle_move_eff (type a) (module RS : RESAMPLE with type a = a)
-    (n_mhsteps : int)
-    (exec : Trace.t -> a * float * Trace.t)
-    (f : unit -> a particle list) : a particle list =
-  let module P = Propose.Make
-    (struct type t = a end)
-    (struct type t = float end) in
-  match f () with
-  | ans -> ans
-  | effect RS.Resample ps, k ->
-      let resampled = multinomial_resample ps in
-      let moved = List.map (fun p ->
-        match p.result with
-        | Finished _ -> p
-        | Stepped s  ->
-            let chain = handle_ssmh (module P) (fun () ->
-              generic_mh (module P) n_mhsteps s.trace exec) in
-            let (_, _, improved_trace) = List.hd chain in
-            { p with result = Stepped { s with trace = improved_trace } }
-      ) resampled in
-      Effect.Deep.continue k moved
+(* ---- Move handler — multinomial resample + SSMH rejuvenation ---- *)
+
+module type MOVE_HANDLER = sig
+  type a
+  val run : int
+          -> (Trace.t -> a * float * Trace.t)
+          -> (a resample_cap -> a particle list)
+          -> a particle list
+end
+
+module MoveHandler = struct
+  module Make(T : R) : MOVE_HANDLER with type a = T.t = struct
+    type a = T.t
+    module RS = Resample.Make(T)
+    let run n_mhsteps exec f =
+      let module SSMH = SsmhHandler.Make(T) in
+      let rcap = object
+        method resample ps = Effect.perform (RS.Resample ps)
+      end in
+      match f rcap with
+      | ans -> ans
+      | effect RS.Resample ps, k ->
+          let resampled = multinomial_resample ps in
+          let moved = List.map (fun p ->
+            match p.result with
+            | Finished _ -> p
+            | Stepped s  ->
+                let chain = SSMH.run (fun pcap acap ->
+                  generic_mh n_mhsteps s.trace exec pcap acap) in
+                let (_, _, improved_trace) = List.hd chain in
+                { p with result = Stepped { s with trace = improved_trace } }
+          ) resampled in
+          Effect.Deep.continue k moved
+  end
+end
 
 let rmpf_eff (type a) n_particles n_mhsteps
     (advance : Trace.t -> a advance_result)
     (exec : Trace.t -> a * float * Trace.t) =
-  let module RS = Resample.Make(struct type t = a end) in
-  handle_move_eff (module RS) n_mhsteps exec (fun () ->
-    generic_pf (module RS) n_particles Trace.empty advance)
+  let module RMPF = MoveHandler.Make(struct type t = a end) in
+  RMPF.run n_mhsteps exec (fun rcap ->
+    generic_pf n_particles Trace.empty advance rcap)

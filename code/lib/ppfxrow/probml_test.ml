@@ -93,3 +93,24 @@ let () =
   let fin_rmpf = Rng.handle_random (fun () -> finished_values (rmpf_eff 500 10 advance exec)) in
   Printf.printf "HMM RMPF: E[trans_p] = %.4f  E[obs_p] = %.4f\n\n"
     (mean (List.map fst fin_rmpf)) (mean (List.map snd fin_rmpf))
+
+(* ============================================================
+   HMM NEW MPF
+   ============================================================ *)
+let () =
+  let ys = Rng.handle_random (fun () -> simulate_hmm 20 5 0.2 0.9) in
+  Printf.printf "=== HMM NEW MPF ===\n";
+
+  let results = Rng.handle_random (fun () ->
+    let particles = mpf_new 2000 (hmm_model 20 5 ys) in
+    List.filter_map (fun p -> match p with
+      | PF_Done { value = (trans_p, obs_p); _ } -> Some (trans_p, obs_p)
+      | PF_Suspended _ -> None
+    ) (Array.to_list particles)
+  ) in
+
+  Printf.printf "HMM NEW MPF: E[trans_p] = %.4f  E[obs_p] = %.4f\n"
+    (mean (List.map fst results))
+    (mean (List.map snd results));
+
+  Printf.printf "Expected trans_p ~0.2, obs_p ~0.9\n\n"

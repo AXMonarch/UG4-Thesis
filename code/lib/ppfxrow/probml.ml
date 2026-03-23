@@ -463,7 +463,7 @@ let hmm_model (n : int) (x0 : int) (ys : int array)
   let obs_p   = cap#sample_float (Dist.beta 1. 1.) (Addr.make ()) in
   let x = ref x0 in
   for i = 0 to n - 1 do
-    let dx = if cap#sample_bool (Dist.bernoulli trans_p) (Addr.make ()) then 1 else 0 in
+    let dx = if Dist.draw (Rng.next ()) (Dist.bernoulli trans_p) then 1 else 0 in
     x := !x + dx;
     let _ = cap#observe_int (Dist.binomial !x obs_p) (Addr.make ()) ys.(i) in
     ()
@@ -472,6 +472,8 @@ let hmm_model (n : int) (x0 : int) (ys : int array)
 
 let vocab_size = 4
 let n_topics   = 2
+
+let vocab = [| "DNA"; "evolution"; "parsing"; "phonology" |]
 
 let simulate_lat_diri (n_words : int) : int array =
   Array.init n_words (fun i -> i mod vocab_size)
@@ -488,13 +490,11 @@ let lat_diri (n_words : int) (obs : int array) (cap : #latdiri_cap) : int array 
       (Addr.make ())
   in
   Array.init n_words (fun i ->
-    let z = cap#sample_int
-      (Dist.categorical doc_topic_ps)
-      (Addr.make ())
-    in
+    let z = Dist.draw (Rng.next ()) (Dist.categorical doc_topic_ps) in
     let word_ps = topic_word_ps.(z) in
+    let word_ps_zipped = Array.map2 (fun _w p -> p) vocab word_ps in
     cap#observe_int
-      (Dist.categorical word_ps)
+      (Dist.categorical word_ps_zipped)
       (Addr.make ())
       obs.(i)
   )
@@ -737,7 +737,7 @@ let exec_pf_coin_flip (tr0 : Trace.t) (model : (coin_flip_cap, float) model)
    MH INFERENCE
    ============================================================ *)
 
-module type PROPOSE = sig
+module type PROPOSE_ACCEPT = sig
   type a
   type w
   type _ Effect.t += Propose : Trace.t -> Trace.t Effect.t
@@ -745,8 +745,8 @@ module type PROPOSE = sig
                              -> (a * w * Trace.t) Effect.t
 end
 
-module Propose = struct
-  module Make(A : R)(W : R) : PROPOSE with type a = A.t and type w = W.t = struct
+module Propose_Accept = struct
+  module Make(A : R)(W : R) : PROPOSE_ACCEPT with type a = A.t and type w = W.t = struct
     type a = A.t
     type w = W.t
     type _ Effect.t += Propose : Trace.t -> Trace.t Effect.t
@@ -794,7 +794,7 @@ end
 module ImHandler = struct
   module Make(A : R) : IM_HANDLER with type a = A.t = struct
     type a = A.t
-    module P = Propose.Make(A)(struct type t = float end)
+    module P = Propose_Accept.Make(A)(struct type t = float end)
     let run f =
       let pcap = object
         method propose tr = Effect.perform (P.Propose tr)
@@ -826,7 +826,7 @@ end
 module SsmhHandler = struct
   module Make(A : R) : SSMH_HANDLER with type a = A.t = struct
     type a = A.t
-    module P = Propose.Make(A)(struct type t = float end)
+    module P = Propose_Accept.Make(A)(struct type t = float end)
     let run f =
       let pcap = object
         method propose tr = Effect.perform (P.Propose tr)
@@ -1029,3 +1029,91 @@ let rmpf_eff (type a) n_particles n_mhsteps
   let module RMPF = MoveHandler.Make(struct type t = a end) in
   RMPF.run n_mhsteps exec (fun rcap ->
     generic_pf n_particles Trace.empty advance rcap)
+
+(* ALTERNATE PF WITH NEW TYPES AND ALGOS *)
+
+type _ Effect.t += Suspend : float -> unit Effect.t
+
+type 'a pf_particle =
+  | PF_Done      of { value : 'a; weight : float; trace : Trace.t }
+  | PF_Suspended of { resume : unit -> 'a pf_particle; weight : float; trace : Trace.t }
+
+let advance (weight : float) (tr : Trace.t ref) (f : unit -> 'a) : 'a pf_particle =
+  match f () with
+  | result ->
+      PF_Done { value = result; weight; trace = !tr }
+  | effect (Suspend lp), k ->
+      let w' = weight +. lp in
+      PF_Suspended
+        { weight = w'
+        ; trace  = !tr
+        ; resume = fun () -> Effect.Deep.continue k ()
+        }
+
+class observe_int_suspend_class : observe_int_cap = object
+  method observe_int d addr y =
+    let lp = Dist.log_prob y d in
+    Effect.perform (Suspend lp);
+    y
+end
+
+class observe_float_suspend_class : observe_float_cap = object
+  method observe_float d addr y =
+    let lp = Dist.log_prob y d in
+    Effect.perform (Suspend lp);
+    y
+end
+
+class observe_int_skip_class (skip : int) : observe_int_cap = object
+  val mutable count = 0
+  method observe_int d addr y =
+    let lp = Dist.log_prob y d in
+    count <- count + 1;
+    if count <= skip then y
+    else (Effect.perform (Suspend lp); y)
+end
+
+(* ---- MPF: Multinomial Particle Filter ---- *)
+
+let pf_multinomial_resample (particles : 'a pf_particle array) : 'a pf_particle array =
+  let weights = Array.map (fun p -> match p with
+    | PF_Done      { weight; _ } -> weight
+    | PF_Suspended { weight; _ } -> weight
+  ) particles in
+  let max_w  = Array.fold_left max neg_infinity weights in
+  let scaled = Array.map (fun w -> exp (w -. max_w)) weights in
+  let total  = Array.fold_left (+.) 0. scaled in
+  let norm   = Array.map (fun w -> w /. total) scaled in
+  Array.init (Array.length particles) (fun _ ->
+    let idx = Dist.draw (Rng.next ()) (Dist.categorical norm) in
+    particles.(idx)
+  )
+
+let mpf_new (type a) (n_particles : int)
+    (model : #hmm_cap -> a)
+    : a pf_particle array =
+  let run_particle () =
+  let tr = ref Trace.empty in
+  let cap = object
+    method sample_float d _addr = Dist.draw (Rng.next ()) d
+    method sample_bool  d _addr = Dist.draw (Rng.next ()) d
+    method observe_int  d addr y =
+      let lp = Dist.log_prob y d in
+      Effect.perform (Suspend lp); y
+  end in
+  advance 0. tr (fun () -> model cap)
+  in
+  let particles = Array.init n_particles (fun _ -> run_particle ()) in
+  let rec loop ps =
+    (* step first *)
+    let stepped = Array.map (fun p -> match p with
+      | PF_Done _ -> p
+      | PF_Suspended { resume; _ } -> resume ()
+    ) ps in
+    if Array.for_all (fun p -> match p with PF_Done _ -> true | _ -> false) stepped
+    then stepped
+    else
+      let resampled = pf_multinomial_resample stepped in
+      loop resampled
+  in
+  loop particles

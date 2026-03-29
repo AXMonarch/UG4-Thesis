@@ -6,10 +6,11 @@
 
 module Addr = struct
   type t = int
-  let make =
-    let next = ref (-1) in
-    fun () ->
-      incr next; !next
+  let next = ref (-1)
+  let make = fun () ->
+    incr next; !next
+  let snapshot () = !next
+  let restore  n  = next := n
 end
 
 (* ============================================================
@@ -92,6 +93,59 @@ module Dist = struct
 
     let sqrt_2    = Float.sqrt 2.
     let sqrt_2_pi = Float.sqrt (2. *. Float.pi)
+
+    let rec log_gamma x =
+      if x <= 0. then neg_inf
+      else if x < 0.5 then
+        log Float.pi -. log (sin (Float.pi *. x)) -. log_gamma (1. -. x)
+      else
+        let x = x -. 1. in
+        let t = x +. 7.5 in
+        let coeffs = [| 0.99999999999980993; 676.5203681218851;
+                        -1259.1392167224028; 771.32342877765313;
+                        -176.61502916214059; 12.507343278686905;
+                        -0.13857109526572012; 9.9843695780195716e-6;
+                        1.5056327351493116e-7 |] in
+        let s = Array.fold_left (fun (acc, i) c ->
+          (acc +. c /. (x +. float_of_int i), i + 1)
+        ) (coeffs.(0), 1) (Array.sub coeffs 1 8) |> fst in
+        0.5 *. log (2. *. Float.pi)
+        +. (x +. 0.5) *. log t
+        -. t
+        +. log s
+
+    let log_beta a b =
+      log_gamma a +. log_gamma b -. log_gamma (a +. b)
+
+    let log1p x =
+      if abs_float x < 1e-4 then
+        x -. x *. x /. 2. +. x *. x *. x /. 3.
+      else
+        log (1. +. x)
+
+    let inv_incomplete_beta a b p =
+      if p <= 0. then 0.
+      else if p >= 1. then 1.
+      else begin
+        let x = ref (exp (log p /. a)) in
+        for _ = 1 to 10 do
+          let bx = !x in
+          if bx > 0. && bx < 1. then begin
+            let d = exp ((a -. 1.) *. log bx
+                        +. (b -. 1.) *. log1p (-. bx)
+                        -. log_beta a b) in
+            if d > 0. then begin
+              let cdf = 1. -. (1. -. bx) ** b in
+              let delta = (cdf -. p) /. d in
+              x := bx -. delta;
+              if !x <= 0. then x := bx /. 2.;
+              if !x >= 1. then x := (bx +. 1.) /. 2.
+            end
+          end
+        done;
+        !x
+      end
+
   end
 
   type 'a t =
@@ -147,13 +201,24 @@ module Dist = struct
     | Uniform (a, b) ->
         a +. r *. (b -. a)
     | Beta (a, b) ->
-        let rs = Utils.lcg_expand r 2 in
-        let ga = rs.(0) ** (1.0 /. a) in
-        let gb = rs.(1) ** (1.0 /. b) in
-        ga /. (ga +. gb)
+        (* use inv_incomplete_beta for a=1 cases exactly,
+           fall back to Johnk for general case *)
+        Utils.inv_incomplete_beta a b r
     | Binomial (n, p) ->
-        let rs = Utils.lcg_expand r n in
-        Array.fold_left (fun acc ri -> acc + (if ri < p then 1 else 0)) 0 rs
+        let rec go i r =
+          let q = (* pmf *)
+            let k = float_of_int i in
+            let n' = float_of_int n in
+            exp (Utils.log_gamma (n' +. 1.)
+                 -. Utils.log_gamma (k +. 1.)
+                 -. Utils.log_gamma (n' -. k +. 1.)
+                 +. k *. log p
+                 +. (n' -. k) *. Utils.log1p (-. p))
+          in
+          let r' = r -. q in
+          if r' < 0. then i else go (i + 1) r'
+        in
+        go 0 r
     | Categorical probs ->
         let total = Array.fold_left ( +. ) 0.0 probs in
         let rec go i cumsum =
@@ -184,33 +249,32 @@ module Dist = struct
         if x >= a && x <= b then -. log (b -. a) else neg_infinity
     | Beta (a, b) ->
         if x > 0. && x < 1. then
-          (a -. 1.) *. log x +. (b -. 1.) *. log (1. -. x)
+          (a -. 1.) *. log x
+          +. (b -. 1.) *. Utils.log1p (-. x)
+          -. Utils.log_beta a b
         else neg_infinity
     | Binomial (n, p) ->
         let k = x in
         if k < 0 || k > n then neg_infinity
         else
           let log_choose n k =
-            let rec log_fact n = if n <= 1 then 0. else log (float_of_int n) +. log_fact (n-1) in
-            log_fact n -. log_fact k -. log_fact (n - k)
+            Utils.log_gamma (float_of_int (n + 1))
+            -. Utils.log_gamma (float_of_int (k + 1))
+            -. Utils.log_gamma (float_of_int (n - k + 1))
           in
           log_choose n k
           +. float_of_int k *. log p
-          +. float_of_int (n - k) *. log (1. -. p)
+          +. float_of_int (n - k) *. Utils.log1p (-. p)
     | Categorical probs ->
         let total = Array.fold_left ( +. ) 0.0 probs in
         if x >= 0 && x < Array.length probs then
           log (probs.(x) /. total)
         else neg_infinity
     | Dirichlet alphas ->
-        let log_gamma a =
-          if a <= 0. then neg_infinity
-          else (a -. 0.5) *. log a -. a +. 0.5 *. log (2. *. Float.pi)
-        in
         let sum_a = Array.fold_left ( +. ) 0. alphas in
         let n = Array.length alphas in
-        let lp = ref (log_gamma sum_a
-          -. Array.fold_left (fun acc a -> acc +. log_gamma a) 0. alphas) in
+        let lp = ref (Utils.log_gamma sum_a
+          -. Array.fold_left (fun acc a -> acc +. Utils.log_gamma a) 0. alphas) in
         for i = 0 to n - 1 do
           lp := !lp +. (alphas.(i) -. 1.) *. log x.(i)
         done;
@@ -386,6 +450,7 @@ module SampleFloatArray = Sample.Make(struct type t = float array end)
 module ObserveBool      = Observe.Make(struct type t = bool end)
 module ObserveFloat     = Observe.Make(struct type t = float end)
 module ObserveInt       = Observe.Make(struct type t = int end)
+module ObserveString    = Observe.Make(struct type t = string end)
 
 (* ---- Concrete capability classes ---- *)
 
@@ -457,19 +522,18 @@ let lin_regr_full (xs : float list) (ys : float list)
   (m, c)
 
 let hmm_model (n : int) (x0 : int) (ys : int array)
-    (cap : #hmm_cap)
-    : float * float =
+    (cap : #hmm_cap) : float * float =
   let trans_p = cap#sample_float (Dist.beta 1. 4.) (Addr.make ()) in
   let obs_p   = cap#sample_float (Dist.beta 1. 1.) (Addr.make ()) in
   let x = ref x0 in
   for i = 0 to n - 1 do
-    let dx = if Dist.draw (Rng.next ()) (Dist.bernoulli trans_p) then 1 else 0 in
+    let dx = if cap#sample_bool (Dist.bernoulli trans_p) (Addr.make ()) 
+             then 1 else 0 in
     x := !x + dx;
     let _ = cap#observe_int (Dist.binomial !x obs_p) (Addr.make ()) ys.(i) in
     ()
   done;
   (trans_p, obs_p)
-
 let vocab_size = 4
 let n_topics   = 2
 
@@ -519,8 +583,14 @@ module ReuseTrace = struct
       match m capability with
       | ans -> ans
       | effect S.Sample (d, addr), k ->
-          let r = Trace.try_insert addr (Rng.next ()) tr in
-          Effect.Deep.continue k (Dist.draw r d)
+        let r = match Trace.AddrMap.find_opt addr !tr with
+          | Some r' -> r'
+          | None    ->
+              let fresh = Rng.next () in
+              tr := Trace.AddrMap.add addr fresh !tr;
+              fresh
+        in
+        Effect.Deep.continue k (Dist.draw r d)
   end
 end
 
@@ -1030,90 +1100,126 @@ let rmpf_eff (type a) n_particles n_mhsteps
   RMPF.run n_mhsteps exec (fun rcap ->
     generic_pf n_particles Trace.empty advance rcap)
 
-(* ALTERNATE PF WITH NEW TYPES AND ALGOS *)
+(* ============================================================
+   ALTERNATE PF WITH NEW TYPES AND ALGOS
+   ============================================================ *)
+
+(* ---- Suspension effect ---- *)
 
 type _ Effect.t += Suspend : float -> unit Effect.t
 
-type 'a pf_particle =
-  | PF_Done      of { value : 'a; weight : float; trace : Trace.t }
-  | PF_Suspended of { resume : unit -> 'a pf_particle; weight : float; trace : Trace.t }
+(* ---- Particle type ---- *)
 
-let advance (weight : float) (tr : Trace.t ref) (f : unit -> 'a) : 'a pf_particle =
+type 'a pf_particle =
+  | PF_Done      of { value : 'a; weight : float; trace : Trace.t; start_addr : int }
+  | PF_Suspended of { resume : unit -> 'a pf_particle; weight : float; trace : Trace.t; start_addr : int; obs_idx : int }
+
+(* ---- advance: run f until next Suspend, then store continuation ---- *)
+
+let advance (weight : float) (tr : Trace.t ref) (start_addr : int) (obs_idx : int) (f : unit -> 'a) : 'a pf_particle =
   match f () with
   | result ->
-      PF_Done { value = result; weight; trace = !tr }
+      PF_Done { value = result; weight; trace = !tr; start_addr }
   | effect (Suspend lp), k ->
-      let w' = weight +. lp in
       PF_Suspended
-        { weight = w'
-        ; trace  = !tr
-        ; resume = fun () -> Effect.Deep.continue k ()
+        { weight     = weight +. lp
+        ; trace      = !tr
+        ; start_addr
+        ; obs_idx    = obs_idx + 1    (* next reconstruct skips past this one *)
+        ; resume     = fun () -> Effect.Deep.continue k ()
         }
 
+(* ---- Capability classes ---- *)
+
 class observe_int_suspend_class : observe_int_cap = object
-  method observe_int d addr y =
-    let lp = Dist.log_prob y d in
-    Effect.perform (Suspend lp);
-    y
+  method observe_int d _addr y =
+    Effect.perform (Suspend (Dist.log_prob y d)); y
 end
 
 class observe_float_suspend_class : observe_float_cap = object
-  method observe_float d addr y =
-    let lp = Dist.log_prob y d in
-    Effect.perform (Suspend lp);
-    y
+  method observe_float d _addr y =
+    Effect.perform (Suspend (Dist.log_prob y d)); y
 end
 
 class observe_int_skip_class (skip : int) : observe_int_cap = object
   val mutable count = 0
-  method observe_int d addr y =
-    let lp = Dist.log_prob y d in
+  method observe_int d _addr y =
     count <- count + 1;
     if count <= skip then y
-    else (Effect.perform (Suspend lp); y)
+    else (Effect.perform (Suspend (Dist.log_prob y d)); y)
 end
 
-(* ---- MPF: Multinomial Particle Filter ---- *)
+(* ---- reconstruct: replay trace for samples, skip to obs_idx for observes ---- *)
 
-let pf_multinomial_resample (particles : 'a pf_particle array) : 'a pf_particle array =
+let reconstruct (type a) (trace : Trace.t) (start_addr : int) (obs_idx : int)
+    (model : #hmm_cap -> a) : a pf_particle =
+  Addr.restore start_addr;
+  let tr = ref trace in
+  let cap = object
+    method sample_float d addr =
+      Dist.draw (Trace.try_insert addr (Rng.next ()) tr) d
+    method sample_bool d addr =
+      Dist.draw (Trace.try_insert addr (Rng.next ()) tr) d
+    method observe_int = (new observe_int_skip_class obs_idx)#observe_int
+  end in
+  advance 0. tr start_addr obs_idx (fun () -> model cap)
+
+(* ---- resample_indices: multinomial resampling, returns index array ---- *)
+
+let resample_indices (particles : 'a pf_particle array) : int array =
+  let n = Array.length particles in
   let weights = Array.map (fun p -> match p with
     | PF_Done      { weight; _ } -> weight
     | PF_Suspended { weight; _ } -> weight
   ) particles in
   let max_w  = Array.fold_left max neg_infinity weights in
+  (* if max_w is -inf, all particles have collapsed *)
+  if max_w = neg_infinity then
+    Array.init n (fun i -> i)  (* uniform fallback: keep as-is *)
+  else
   let scaled = Array.map (fun w -> exp (w -. max_w)) weights in
-  let total  = Array.fold_left (+.) 0. scaled in
+  let total  = Array.fold_left ( +. ) 0. scaled in
   let norm   = Array.map (fun w -> w /. total) scaled in
-  Array.init (Array.length particles) (fun _ ->
-    let idx = Dist.draw (Rng.next ()) (Dist.categorical norm) in
-    particles.(idx)
+  Array.init n (fun _ ->
+    min (Dist.draw (Rng.next ()) (Dist.categorical norm)) (n - 1)
   )
+
+(* ---- MPF: Multinomial Particle Filter ---- *)
 
 let mpf_new (type a) (n_particles : int)
     (model : #hmm_cap -> a)
     : a pf_particle array =
+  
+  Addr.restore (-1); 
   let run_particle () =
-  let tr = ref Trace.empty in
-  let cap = object
-    method sample_float d _addr = Dist.draw (Rng.next ()) d
-    method sample_bool  d _addr = Dist.draw (Rng.next ()) d
-    method observe_int  d addr y =
-      let lp = Dist.log_prob y d in
-      Effect.perform (Suspend lp); y
-  end in
-  advance 0. tr (fun () -> model cap)
+    let start_addr = Addr.snapshot () in
+    let tr = ref Trace.empty in
+    let cap = object
+      method sample_float d addr =
+        Dist.draw (Trace.try_insert addr (Rng.next ()) tr) d
+      method sample_bool d addr =
+        Dist.draw (Trace.try_insert addr (Rng.next ()) tr) d
+      method observe_int = (new observe_int_suspend_class)#observe_int
+    end in
+    advance 0. tr start_addr 0 (fun () -> model cap)
+  in
+  let step p = match p with
+    | PF_Done _                  -> p
+    | PF_Suspended { resume; _ } -> resume ()
   in
   let particles = Array.init n_particles (fun _ -> run_particle ()) in
   let rec loop ps =
-    (* step first *)
-    let stepped = Array.map (fun p -> match p with
-      | PF_Done _ -> p
-      | PF_Suspended { resume; _ } -> resume ()
-    ) ps in
-    if Array.for_all (fun p -> match p with PF_Done _ -> true | _ -> false) stepped
-    then stepped
-    else
-      let resampled = pf_multinomial_resample stepped in
-      loop resampled
+    if Array.for_all (fun p -> match p with PF_Done _ -> true | _ -> false) ps
+    then ps
+    else begin
+      let indices   = resample_indices ps in
+      let resampled = Array.map (fun idx ->
+        match ps.(idx) with
+        | PF_Done _ as p -> p
+        | PF_Suspended { trace; start_addr; obs_idx; _ } ->
+            reconstruct trace start_addr obs_idx model
+      ) indices in
+      loop (Array.map step resampled)
+    end
   in
   loop particles

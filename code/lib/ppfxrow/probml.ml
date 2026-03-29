@@ -155,6 +155,7 @@ module Dist = struct
     | Beta      :   float * float    -> float t
     | Binomial  :   int * float      -> int t
     | Categorical : float array      -> int t
+    | CategoricalString: (string * float) array   -> string t
     | Dirichlet  :   float array     -> float array t
 
   let bernoulli : float -> bool t
@@ -191,6 +192,9 @@ module Dist = struct
     assert (Array.length alphas >= 2);
     assert (Array.for_all (fun a -> a > 0.) alphas);
     Dirichlet alphas
+  
+   let categorical_string : (string * float) array -> string t
+    = fun pairs -> CategoricalString pairs
 
   let draw : type a. float -> a t -> a
     = fun r d ->
@@ -235,6 +239,16 @@ module Dist = struct
         let xs = Array.map2 (fun a ri -> ri ** (1.0 /. a)) alphas rs in
         let total = Array.fold_left ( +. ) 0. xs in
         Array.map (fun x -> x /. total) xs
+    | CategoricalString pairs ->
+      let total = Array.fold_left (fun acc (_, p) -> acc +. p) 0. pairs in
+      let rec go i cumsum =
+        if i >= Array.length pairs then fst pairs.(Array.length pairs - 1)
+        else
+          let cumsum' = cumsum +. snd pairs.(i) /. total in
+          if r <= cumsum' then fst pairs.(i)
+          else go (i + 1) cumsum'
+      in
+      go 0 0.
 
   let log_prob : type a. a -> a t -> float
     = fun x d ->
@@ -279,6 +293,11 @@ module Dist = struct
           lp := !lp +. (alphas.(i) -. 1.) *. log x.(i)
         done;
         !lp
+    | CategoricalString pairs ->
+      let total = Array.fold_left (fun acc (_, p) -> acc +. p) 0. pairs in
+      match Array.find_opt (fun (w, _) -> w = x) pairs with
+      | Some (_, p) -> log (p /. total)
+      | None        -> neg_infinity
 end
 
 (* ============================================================
@@ -372,6 +391,10 @@ class type observe_int_cap = object
   method observe_int : int Dist.t -> Addr.t -> int -> int
 end
 
+class type observe_string_cap = object
+  method observe_string : string Dist.t -> Addr.t -> string -> string
+end
+
 (* ---- Model capability compositions ---- *)
 
 class type coin_flip_cap = object
@@ -393,7 +416,7 @@ end
 class type latdiri_cap = object
   inherit sample_float_array_cap
   inherit sample_int_cap
-  inherit observe_int_cap
+  inherit observe_string_cap
 end
 
 (* ---- Handler signatures ---- *)
@@ -451,6 +474,7 @@ module ObserveBool      = Observe.Make(struct type t = bool end)
 module ObserveFloat     = Observe.Make(struct type t = float end)
 module ObserveInt       = Observe.Make(struct type t = int end)
 module ObserveString    = Observe.Make(struct type t = string end)
+module ObserveString = Observe.Make(struct type t = string end)
 
 (* ---- Concrete capability classes ---- *)
 
@@ -482,6 +506,10 @@ class observe_int_class : observe_int_cap = object
   method observe_int d addr x = Effect.perform (ObserveInt.Observe (d, addr, x))
 end
 
+class observe_string_class : observe_string_cap = object
+  method observe_string d addr x = Effect.perform (ObserveString.Observe (d, addr, x))
+end
+
 (* ---- Composite base caps ---- *)
 
 let coin_flip_base_cap : coin_flip_cap = object
@@ -503,7 +531,7 @@ end
 let latdiri_base_cap : latdiri_cap = object
   inherit sample_float_array_class
   inherit sample_int_class
-  inherit observe_int_class
+  inherit observe_string_class
 end
 
 (* ============================================================
@@ -539,10 +567,10 @@ let n_topics   = 2
 
 let vocab = [| "DNA"; "evolution"; "parsing"; "phonology" |]
 
-let simulate_lat_diri (n_words : int) : int array =
-  Array.init n_words (fun i -> i mod vocab_size)
+let simulate_lat_diri (n_words : int) : string array =
+  Array.init n_words (fun i -> vocab.(i mod vocab_size))
 
-let lat_diri (n_words : int) (obs : int array) (cap : #latdiri_cap) : int array =
+let lat_diri (n_words : int) (obs : string array) (cap : #latdiri_cap) : string array =
   let topic_word_ps = Array.init n_topics (fun _ ->
     cap#sample_float_array
       (Dist.dirichlet (Array.make vocab_size 1.0))
@@ -553,12 +581,13 @@ let lat_diri (n_words : int) (obs : int array) (cap : #latdiri_cap) : int array 
       (Dist.dirichlet (Array.make n_topics 1.0))
       (Addr.make ())
   in
+  let paired_word_ps = Array.map (fun word_ps ->
+    Array.map2 (fun w p -> (w, p)) vocab word_ps
+  ) topic_word_ps in
   Array.init n_words (fun i ->
-    let z = Dist.draw (Rng.next ()) (Dist.categorical doc_topic_ps) in
-    let word_ps = topic_word_ps.(z) in
-    let word_ps_zipped = Array.map2 (fun _w p -> p) vocab word_ps in
-    cap#observe_int
-      (Dist.categorical word_ps_zipped)
+    let z = cap#sample_int (Dist.categorical doc_topic_ps) (Addr.make ()) in
+    cap#observe_string
+      (Dist.categorical_string paired_word_ps.(z))
       (Addr.make ())
       obs.(i)
   )
@@ -705,11 +734,11 @@ let exec_model_hmm (tr0 : Trace.t) (model : (hmm_cap, float * float) model)
   in
   (ans, w, !tr)
 
-let exec_model_latdiri (tr0 : Trace.t) (model : (latdiri_cap, int array) model)
-    : int array * float * Trace.t =
+let exec_model_latdiri (tr0 : Trace.t) (model : (latdiri_cap, string array) model)
+    : string array * float * Trace.t =
   let module RTFA = ReuseTrace.Make(struct type t = float array end) in
   let module RTI  = ReuseTrace.Make(struct type t = int end) in
-  let module LH   = Likelihood.Make(struct type t = int end) in
+  let module LH   = Likelihood.Make(struct type t = string end) in
   let tr = ref tr0 in
   let (ans, w) =
     RTFA.run tr
@@ -721,7 +750,7 @@ let exec_model_latdiri (tr0 : Trace.t) (model : (latdiri_cap, int array) model)
                 let caps : latdiri_cap = object
                   method sample_float_array d addr = scap_fa#sample d addr
                   method sample_int         d addr = scap_i#sample d addr
-                  method observe_int        d addr y = ocap#observe d addr y
+                  method observe_string     d addr y = ocap#observe d addr y
                 end in
                 run_with_capabilities caps model))))))
   in
@@ -765,11 +794,11 @@ let exec_pf_hmm (tr0 : Trace.t) (model : (hmm_cap, float * float) model)
                        ; weight = 0.
                        ; trace  = !tr }))))))
 
-let exec_pf_latdiri (tr0 : Trace.t) (model : (latdiri_cap, int array) model)
-    : int array advance_result =
+let exec_pf_latdiri (tr0 : Trace.t) (model : (latdiri_cap, string array) model)
+    : string array advance_result =
   let module RTFA = ReuseTrace.Make(struct type t = float array end) in
   let module RTI  = ReuseTrace.Make(struct type t = int end) in
-  let module AO   = AdvanceObserve.Make(struct type t = int end) in
+  let module AO   = AdvanceObserve.Make(struct type t = string end) in
   let tr = ref tr0 in
   AO.run tr
     (Model (fun ocap ->
@@ -780,7 +809,7 @@ let exec_pf_latdiri (tr0 : Trace.t) (model : (latdiri_cap, int array) model)
               let caps : latdiri_cap = object
                 method sample_float_array d addr = scap_fa#sample d addr
                 method sample_int         d addr = scap_i#sample d addr
-                method observe_int        d addr y = ocap#observe d addr y
+                method observe_string     d addr y = ocap#observe d addr y
               end in
               Finished { value  = run_with_capabilities caps model
                        ; weight = 0.

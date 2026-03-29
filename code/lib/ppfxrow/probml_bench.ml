@@ -5,6 +5,11 @@ let m_true = 2.0 and c_true = 1.0
 
 let n_runs = 10
 
+let time_median f =
+  let times = Array.init n_runs (fun _ -> f ()) in
+  Array.sort compare times;
+  (times.(n_runs / 2 - 1) +. times.(n_runs / 2)) /. 2.
+
 let time_average f =
   let total = ref 0. in
   for _ = 1 to n_runs do
@@ -13,25 +18,25 @@ let time_average f =
   !total /. float_of_int n_runs
 
 let time_ssmh n exec =
-  time_average (fun () ->
+  time_median (fun () ->
     let counter = Mtime_clock.counter () in
     let _ = Rng.handle_random (fun () -> ssmh_eff n exec) in
     Mtime.Span.to_float_ns (Mtime_clock.count counter) /. 1_000_000.)
 
 let time_mpf n_particles advance =
-  time_average (fun () ->
+  time_median (fun () ->
     let counter = Mtime_clock.counter () in
     let _ = Rng.handle_random (fun () -> mpf_eff n_particles advance) in
     Mtime.Span.to_float_ns (Mtime_clock.count counter) /. 1_000_000.)
 
 let time_pmh n_mhsteps n_particles advance exec =
-  time_average (fun () ->
+  time_median (fun () ->
     let counter = Mtime_clock.counter () in
     let _ = Rng.handle_random (fun () -> pmh_eff n_mhsteps n_particles advance exec) in
     Mtime.Span.to_float_ns (Mtime_clock.count counter) /. 1_000_000.)
 
 let time_rmpf n_particles n_mhsteps advance exec =
-  time_average (fun () ->
+  time_median (fun () ->
     let counter = Mtime_clock.counter () in
     let _ = Rng.handle_random (fun () -> rmpf_eff n_particles n_mhsteps advance exec) in
     Mtime.Span.to_float_ns (Mtime_clock.count counter) /. 1_000_000.)

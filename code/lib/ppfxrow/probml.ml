@@ -474,7 +474,6 @@ module ObserveBool      = Observe.Make(struct type t = bool end)
 module ObserveFloat     = Observe.Make(struct type t = float end)
 module ObserveInt       = Observe.Make(struct type t = int end)
 module ObserveString    = Observe.Make(struct type t = string end)
-module ObserveString = Observe.Make(struct type t = string end)
 
 (* ---- Concrete capability classes ---- *)
 

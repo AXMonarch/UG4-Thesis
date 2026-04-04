@@ -85,6 +85,7 @@ let pmh_hmm_posterior_mean chain burn_in =
 
 let () =
   Random.init 42;
+  Rng.handle_random (fun () ->
 
   let n_particles = 100  in
   let n_mhsteps   = 5    in
@@ -117,3 +118,4 @@ let () =
 
   let (mean_t, mean_o) = pmh_hmm_posterior_mean (pmh n_pmh n_particles (hmm 20 0 ys_hmm)) burn_in in
   Printf.printf "PMH:  E[trans_p]=%.3f (true=0.2) E[obs_p]=%.3f (true=0.9)\n" mean_t mean_o
+  )

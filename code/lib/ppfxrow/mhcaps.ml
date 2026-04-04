@@ -41,8 +41,6 @@ type ('c, 'a) model = Model of ((< .. > as 'c) -> 'a) [@@unboxed]
 let run_with_capabilities : (< .. > as 'c) -> ('c, 'a) model -> 'a
   = fun caps (Model m) -> m caps
 
-(* ---- Polymorphic capability class types (supervisor style) ---- *)
-
 class type ['a] sample_capability = object
   method sample : 'a Dist.t -> Addr.t -> 'a
 end
@@ -295,6 +293,28 @@ module Likelihood = struct
           Effect.Deep.continue k y
   end
 end
+(* 
+
+
+let exec_coin_flip (tr0 : Trace.t)
+(model : (coin_flip_cap, float) model)
+: float * float * Trace.t =
+  let module RT = ReuseTrace.Make(struct type t = float end) in
+  let module LH = Likelihood.Make(struct type t = int   end) in
+  let tr = ref tr0 in
+  let (ans, w) =
+    RT.run tr
+      (Model (fun scap ->
+        LH.run
+        Model (fun ocap ->
+          let caps : coin_flip_cap = object
+            method sample_float d addr   = scap#sample d addr
+            method observe_int  d addr y = ocap#observe d addr y
+          end in
+          run_with_capabilities caps model)))
+  in
+  (ans, w, !tr) *)
+
 
 let exec_model_linreg (tr0 : Trace.t) (model : (linreg_cap, float * float) model)
     : (float * float) * float * Trace.t =

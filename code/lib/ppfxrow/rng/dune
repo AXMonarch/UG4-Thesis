@@ -1,3 +1,7 @@
+(executable
+ (name generate_rng)
+ (modules generate_rng))
+
 (library
  (name rng)
  (wrapped false)

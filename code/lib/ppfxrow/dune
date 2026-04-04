@@ -1,7 +1,7 @@
 (library
  (name ppfxrow)
  (wrapped false)
- (modules mh pf mhcaps)
+ (modules mh pf mhcaps probml)
  (libraries rng))
 
 (executable
@@ -38,4 +38,28 @@
  (public_name cap_bench)
  (name cap_bench)
  (modules cap_bench)
+ (libraries ppfxrow rng mtime.clock.os))
+
+(executable
+ (public_name probml_test)
+ (name probml_test)
+ (modules probml_test)
+ (libraries ppfxrow rng mtime.clock.os))
+
+(executable
+ (public_name particle)
+ (name particle)
+ (modules particle)
+ (libraries ppfxrow rng mtime.clock.os))
+
+ (executable
+ (public_name probml_bench)
+ (name probml_bench)
+ (modules probml_bench)
+ (libraries ppfxrow rng mtime.clock.os))
+
+(executable
+ (public_name geweke)
+ (name geweke)
+ (modules geweke)
  (libraries ppfxrow rng mtime.clock.os))

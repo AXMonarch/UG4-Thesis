@@ -52,9 +52,7 @@ let simulate_hmm (n : int) (x0 : int) (trans_p : float) (obs_p : float) : int ar
   ys
 
 let () =
-  (* =======================================================================
-     EXPERIMENT 1: Varying inference parameters, fixed model size (50)
-     ======================================================================= *)
+  (* EXPERIMENT 1: Varying inference parameters, fixed model size (50) *)
 
   let xs_fixed = List.init 50 (fun i -> float_of_int i /. 10.0 -. 2.5) in
   let ys_fixed = Rng.handle_random (fun () ->
@@ -65,7 +63,6 @@ let () =
   let ys_hmm_fixed = Rng.handle_random (fun () -> simulate_hmm 50 0 0.2 0.9) in
   let ys_lda_fixed = simulate_lat_diri 50 in
 
-  (* --- SSMH varying iterations --- *)
   Printf.printf "=== Experiment 1: SSMH Varying Iterations (LinReg 50 obs) ===\n";
   Printf.printf "%-6s %10s\n" "n" "time(ms)";
   let exp1_ssmh_linreg = List.map (fun n ->
@@ -96,7 +93,6 @@ let () =
   Printf.printf "\n";
   Printf.printf "SSMH LatDiri Experiment 1 complete\n\n";
 
-  (* --- MPF varying particles --- *)
   Printf.printf "=== Experiment 1: MPF Varying Particles (LinReg 50 obs) ===\n";
   Printf.printf "%-6s %10s\n" "n" "time(ms)";
   let exp1_mpf_linreg = List.map (fun n ->
@@ -127,7 +123,6 @@ let () =
   Printf.printf "\n";
   Printf.printf "MPF LatDiri Experiment 1 complete\n\n";
 
-  (* --- PMH varying particles --- *)
   Printf.printf "=== Experiment 1: PMH Varying Particles (LinReg 50 obs, 50 MH steps) ===\n";
   Printf.printf "%-6s %10s\n" "n" "time(ms)";
   let exp1_pmh_linreg = List.map (fun n ->
@@ -161,7 +156,6 @@ let () =
   Printf.printf "\n";
   Printf.printf "PMH LatDiri Experiment 1 complete\n\n";
 
-  (* --- RMPF varying MH steps --- *)
   Printf.printf "=== Experiment 1: RMPF Varying MH Steps (LinReg 50 obs, 10 particles) ===\n";
   Printf.printf "%-6s %10s\n" "steps" "time(ms)";
   let exp1_rmpf_linreg = List.map (fun steps ->
@@ -195,11 +189,8 @@ let () =
   Printf.printf "\n";
   Printf.printf "RMPF LatDiri Experiment 1 complete\n\n";
 
-  (* =======================================================================
-     EXPERIMENT 2: Varying model size, fixed inference parameters
-     ======================================================================= *)
+  (* EXPERIMENT 2: Varying model size, fixed inference parameters *)
 
-  (* --- SSMH varying model size --- *)
   Printf.printf "=== Experiment 2: SSMH Varying Model Size (LinReg, 100 iterations) ===\n";
   Printf.printf "%-6s %10s\n" "size" "time(ms)";
   let exp2_ssmh_linreg = List.map (fun size ->
@@ -345,9 +336,7 @@ let () =
   Printf.printf "\n";
   Printf.printf "RMPF LatDiri Experiment 2 complete\n\n";
 
-  (* =======================================================================
-     CSV output
-     ======================================================================= *)
+  (* CSV output *)
   let csv_file = open_out "plotting/ocaml_cap_benchmarks.csv" in
 
   (* Experiment 1 *)

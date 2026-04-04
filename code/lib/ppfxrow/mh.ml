@@ -203,8 +203,8 @@ module Dist = struct
         if x >= 0 && x < Array.length probs then
           log (probs.(x) /. total)
         else neg_infinity
-      | Dirichlet alphas ->
-          let log_gamma a =
+    | Dirichlet alphas ->
+        let log_gamma a =
             if a <= 0. then neg_infinity
             else (a -. 0.5) *. log a -. a +. 0.5 *. log (2. *. Float.pi)
           in

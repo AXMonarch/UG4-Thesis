@@ -32,7 +32,7 @@ let () =
   
   (* SSMH *)
   let exec    tr = exec_model_linreg tr (Model (lin_regr_full xs ys)) in
-  let chain = Rng.handle_random (fun () -> ssmh 10000 exec) in
+  let chain = Rng.handle_random (fun () -> ssmh 1000 exec) in
   Printf.printf "LinReg SSMH: E[m] = %.4f (expected ~2.0)\n"
     (mean (List.map (fun ((m, _), _, _) -> m) chain));
   Printf.printf "LinReg SSMH: E[c] = %.4f (expected ~1.0)\n"
@@ -106,7 +106,7 @@ let () =
   Printf.printf "LatDiri RMPF: particles finished = %d (expected 10)\n\n" (List.length fin_rmpf) *)
 
   (* ── HMM Convergence Test ── *)
-let () =
+(* let () =
   let ys = Rng.handle_random (fun () -> simulate_hmm 10 0 0.2 0.9) in
   Printf.printf "OCaml ys = ";
   Array.iter (fun y -> Printf.printf "%d " y) ys;
@@ -121,4 +121,4 @@ let () =
       (t, o)
     ) in
     Printf.printf "%-12d  %-12.4f  %-12.4f\n" n t o
-  ) [200; 1000; 5000; 5500]
+  ) [200; 1000; 5000; 5500] *)

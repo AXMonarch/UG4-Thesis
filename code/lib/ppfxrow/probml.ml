@@ -1,8 +1,6 @@
 [@@@ocaml.warning "-27-32-39"]
 
-(* ============================================================
-   ADDR
-   ============================================================ *)
+(* ADDR *)
 
 module Addr = struct
   type t = int
@@ -13,9 +11,7 @@ module Addr = struct
   let restore  n  = next := n
 end
 
-(* ============================================================
-   TRACE
-   ============================================================ *)
+(* TRACE *)
 
 module Trace = struct
   module AddrMap = Map.Make(Int)
@@ -36,9 +32,7 @@ module Trace = struct
   let size : t -> int = AddrMap.cardinal
 end
 
-(* ============================================================
-   DIST
-   ============================================================ *)
+(*  DIST *)
 
 module Dist = struct
   module Utils = struct
@@ -210,7 +204,7 @@ module Dist = struct
         Utils.inv_incomplete_beta a b r
     | Binomial (n, p) ->
         let rec go i r =
-          let q = (* pmf *)
+          let q =
             let k = float_of_int i in
             let n' = float_of_int n in
             exp (Utils.log_gamma (n' +. 1.)
@@ -300,9 +294,6 @@ module Dist = struct
       | None        -> neg_infinity
 end
 
-(* ============================================================
-   PARTICLE FILTER TYPES  (was: pf.ml)
-   ============================================================ *)
 
 type 'a advance_result =
   | Finished of { value : 'a; weight : float; trace : Trace.t }
@@ -310,17 +301,11 @@ type 'a advance_result =
 
 type 'a particle = { result : 'a advance_result; weight : float }
 
-(* ============================================================
-   CAPABILITY INFRASTRUCTURE
-   ============================================================ *)
-
-(* ---- Type container for functor arguments ---- *)
+(* CAPABILITY INFRASTRUCTURE *)
 
 module type R = sig
   type t
 end
-
-(* ---- Effect signatures ---- *)
 
 module type SAMPLE = sig
   type a
@@ -346,8 +331,6 @@ module Observe = struct
   end
 end
 
-(* ---- Model type ---- *)
-
 type ('c, 'a) model = Model of ((< .. > as 'c) -> 'a) [@@unboxed]
 
 let run_with_capabilities : (< .. > as 'c) -> ('c, 'a) model -> 'a
@@ -360,8 +343,6 @@ end
 class type ['a] observe_capability = object
   method observe : 'a Dist.t -> Addr.t -> 'a -> 'a
 end
-
-(* ---- Per-type capability class types ---- *)
 
 class type sample_float_cap = object
   method sample_float : float Dist.t -> Addr.t -> float
@@ -395,8 +376,6 @@ class type observe_string_cap = object
   method observe_string : string Dist.t -> Addr.t -> string -> string
 end
 
-(* ---- Model capability compositions ---- *)
-
 class type coin_flip_cap = object
   inherit sample_float_cap
   inherit observe_bool_cap
@@ -419,8 +398,6 @@ class type latdiri_cap = object
   inherit observe_string_cap
 end
 
-(* ---- Handler signatures ---- *)
-
 module type SAMPLE_HANDLER = sig
   type a
   val run : (< sample : a Dist.t -> Addr.t -> a >, 'b) model -> 'b
@@ -430,8 +407,6 @@ module type OBSERVE_HANDLER = sig
   type a
   val run : (< observe : a Dist.t -> Addr.t -> a -> a >, 'b) model -> 'b
 end
-
-(* ---- Default handler functors ---- *)
 
 module DefaultSample = struct
   module Make(T : R) : SAMPLE_HANDLER with type a = T.t = struct
@@ -464,7 +439,6 @@ module DefaultObserve = struct
   end
 end
 
-(* ---- Effect module instantiations ---- *)
 
 module SampleFloat      = Sample.Make(struct type t = float end)
 module SampleBool       = Sample.Make(struct type t = bool end)
@@ -475,7 +449,6 @@ module ObserveFloat     = Observe.Make(struct type t = float end)
 module ObserveInt       = Observe.Make(struct type t = int end)
 module ObserveString    = Observe.Make(struct type t = string end)
 
-(* ---- Concrete capability classes ---- *)
 
 class sample_float_class : sample_float_cap = object
   method sample_float d addr = Effect.perform (SampleFloat.Sample (d, addr))
@@ -509,8 +482,6 @@ class observe_string_class : observe_string_cap = object
   method observe_string d addr x = Effect.perform (ObserveString.Observe (d, addr, x))
 end
 
-(* ---- Composite base caps ---- *)
-
 let coin_flip_base_cap : coin_flip_cap = object
   inherit sample_float_class
   inherit observe_bool_class
@@ -533,9 +504,7 @@ let latdiri_base_cap : latdiri_cap = object
   inherit observe_string_class
 end
 
-(* ============================================================
-   MODELS
-   ============================================================ *)
+(* MODELS *)
 
 let lin_regr_full (xs : float list) (ys : float list)
     (cap : #linreg_cap) : float * float =
@@ -591,9 +560,7 @@ let lat_diri (n_words : int) (obs : string array) (cap : #latdiri_cap) : string 
       obs.(i)
   )
 
-(* ============================================================
-   INFERENCE HANDLER FUNCTORS
-   ============================================================ *)
+(* INFERENCE HANDLER FUNCTORS *)
 
 module type REUSE_TRACE_HANDLER = sig
   type a
@@ -670,9 +637,7 @@ module AdvanceObserve = struct
   end
 end
 
-(* ============================================================
-   EXEC FUNCTIONS
-   ============================================================ *)
+(* EXEC FUNCTIONS *)
 
 let exec_model_coin_flip (tr0 : Trace.t)
     (model : (coin_flip_cap, float) model)
@@ -831,9 +796,7 @@ let exec_pf_coin_flip (tr0 : Trace.t) (model : (coin_flip_cap, float) model)
                    ; weight = 0.
                    ; trace  = !tr }))))
 
-(* ============================================================
-   MH INFERENCE
-   ============================================================ *)
+(* MH INFERENCE *)
 
 module type PROPOSE_ACCEPT = sig
   type a
@@ -881,8 +844,6 @@ let generic_mh (type a)
   let init = exec tr0 in
   loop 0 init [init]
 
-(* ---- IM handler — constructs IM caps via Propose module ---- *)
-
 module type IM_HANDLER = sig
   type a
   val run : (propose_cap -> a accept_cap -> (a * float * Trace.t) list)
@@ -912,8 +873,6 @@ module ImHandler = struct
           Effect.Deep.continue k next
   end
 end
-
-(* ---- SSMH handler — constructs SSMH caps via Propose module ---- *)
 
 module type SSMH_HANDLER = sig
   type a
@@ -962,9 +921,7 @@ let ssmh_eff (type a) n (exec : Trace.t -> a * float * Trace.t) =
   let module SSMH = SsmhHandler.Make(struct type t = a end) in
   SSMH.run (fun pcap acap -> generic_mh n Trace.empty exec pcap acap)
 
-(* ============================================================
-   PF INFERENCE
-   ============================================================ *)
+(* PF INFERENCE *)
 
 module type RESAMPLE = sig
   type a
@@ -1025,8 +982,6 @@ let generic_pf (type a)
   in
   loop init
 
-(* ---- Multinomial handler — constructs resample cap via Resample module ---- *)
-
 module type MULTINOMIAL_HANDLER = sig
   type a
   val run : (a resample_cap -> a particle list) -> a particle list
@@ -1051,9 +1006,7 @@ let mpf_eff (type a) n (advance : Trace.t -> a advance_result) =
   let module MPF = MultinomialHandler.Make(struct type t = a end) in
   MPF.run (fun rcap -> generic_pf n Trace.empty advance rcap)
 
-(* ============================================================
-   HYBRID INFERENCE
-   ============================================================ *)
+(* HYBRID INFERENCE *)
 
 let handle_pmh (type a) n_particles (advance : Trace.t -> a advance_result) tr
     : a * float * Trace.t =
@@ -1084,8 +1037,6 @@ let pmh_eff (type a) n_mhsteps n_particles
   IMH.run (fun pcap acap ->
     generic_mh n_mhsteps tr_init
       (handle_pmh n_particles advance) pcap acap)
-
-(* ---- Move handler — multinomial resample + SSMH rejuvenation ---- *)
 
 module type MOVE_HANDLER = sig
   type a
@@ -1128,21 +1079,13 @@ let rmpf_eff (type a) n_particles n_mhsteps
   RMPF.run n_mhsteps exec (fun rcap ->
     generic_pf n_particles Trace.empty advance rcap)
 
-(* ============================================================
-   ALTERNATE PF WITH NEW TYPES AND ALGOS
-   ============================================================ *)
-
-(* ---- Suspension effect ---- *)
+(* EXPERIMENTAL PF WITH NEW TYPES AND ALGOS  *)
 
 type _ Effect.t += Suspend : float -> unit Effect.t
-
-(* ---- Particle type ---- *)
 
 type 'a pf_particle =
   | PF_Done      of { value : 'a; weight : float; trace : Trace.t; start_addr : int }
   | PF_Suspended of { resume : unit -> 'a pf_particle; weight : float; trace : Trace.t; start_addr : int; obs_idx : int }
-
-(* ---- advance: run f until next Suspend, then store continuation ---- *)
 
 let advance (weight : float) (tr : Trace.t ref) (start_addr : int) (obs_idx : int) (f : unit -> 'a) : 'a pf_particle =
   match f () with
@@ -1153,11 +1096,10 @@ let advance (weight : float) (tr : Trace.t ref) (start_addr : int) (obs_idx : in
         { weight     = weight +. lp
         ; trace      = !tr
         ; start_addr
-        ; obs_idx    = obs_idx + 1    (* next reconstruct skips past this one *)
+        ; obs_idx    = obs_idx + 1
         ; resume     = fun () -> Effect.Deep.continue k ()
         }
 
-(* ---- Capability classes ---- *)
 
 class observe_int_suspend_class : observe_int_cap = object
   method observe_int d _addr y =
@@ -1177,8 +1119,6 @@ class observe_int_skip_class (skip : int) : observe_int_cap = object
     else (Effect.perform (Suspend (Dist.log_prob y d)); y)
 end
 
-(* ---- reconstruct: replay trace for samples, skip to obs_idx for observes ---- *)
-
 let reconstruct (type a) (trace : Trace.t) (start_addr : int) (obs_idx : int)
     (model : #hmm_cap -> a) : a pf_particle =
   Addr.restore start_addr;
@@ -1192,8 +1132,6 @@ let reconstruct (type a) (trace : Trace.t) (start_addr : int) (obs_idx : int)
   end in
   advance 0. tr start_addr obs_idx (fun () -> model cap)
 
-(* ---- resample_indices: multinomial resampling, returns index array ---- *)
-
 let resample_indices (particles : 'a pf_particle array) : int array =
   let n = Array.length particles in
   let weights = Array.map (fun p -> match p with
@@ -1201,9 +1139,8 @@ let resample_indices (particles : 'a pf_particle array) : int array =
     | PF_Suspended { weight; _ } -> weight
   ) particles in
   let max_w  = Array.fold_left max neg_infinity weights in
-  (* if max_w is -inf, all particles have collapsed *)
   if max_w = neg_infinity then
-    Array.init n (fun i -> i)  (* uniform fallback: keep as-is *)
+    Array.init n (fun i -> i)
   else
   let scaled = Array.map (fun w -> exp (w -. max_w)) weights in
   let total  = Array.fold_left ( +. ) 0. scaled in
@@ -1211,8 +1148,6 @@ let resample_indices (particles : 'a pf_particle array) : int array =
   Array.init n (fun _ ->
     min (Dist.draw (Rng.next ()) (Dist.categorical norm)) (n - 1)
   )
-
-(* ---- MPF: Multinomial Particle Filter ---- *)
 
 let mpf_new (type a) (n_particles : int)
     (model : #hmm_cap -> a)
